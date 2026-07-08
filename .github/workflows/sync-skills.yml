@@ -2,9 +2,8 @@ name: Sync Salesforce Agent Skills
 
 on:
   schedule:
-    # Triggers every single day at 00:00 UTC (Configurable interval)
     - cron: '0 0 * * *'
-  workflow_dispatch: # Allows manual validation polling right from the GitHub Actions UI
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -20,28 +19,32 @@ jobs:
         run: |
           echo "Polling forcedotcom/sf-skills repository..."
           
-          # 1. Query the GitHub Contents API for the skills directory
           SKILLS_JSON=$(curl -s "https://api.github.com/repos/forcedotcom/sf-skills/contents/skills")
-          
-          # 2. Extract folder names using jq
           FOLDERS=$(echo "$SKILLS_JSON" | jq -r '.[] | select(.type=="dir") | .name')
           
-          # Initialize data array
           echo "[]" > data.json
           
           for folder in $FOLDERS; do
             echo "Processing skill: $folder"
             
-            # Fetch the SKILL.md file for the respective skill
+            # Fetch the SKILL.md file
             MD_URL="https://raw.githubusercontent.com/forcedotcom/sf-skills/main/skills/$folder/SKILL.md"
             MD_CONTENT=$(curl -s -f "$MD_URL" || echo "No documentation found.")
-            
-            # Escape content cleanly for JSON payload injection
             CLEAN_CONTENT=$(echo "$MD_CONTENT" | jq -Rsa .)
             
-            # Append compiled dataset to our static flat JSON database
-            jq --arg id "$folder" --arg name "$(echo $folder | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1')" --arg content "$CLEAN_CONTENT" \
-            '. += [{id: $id, name: $name, markdown: $content, url: "https://github.com/forcedotcom/sf-skills/tree/main/skills/\($id)"}]' data.json > tmp.json && mv tmp.json data.json
+            # Query the commit history for this folder to find its creation/last-update date
+            COMMIT_DATA=$(curl -s "https://api.github.com/repos/forcedotcom/sf-skills/commits?path=skills/$folder&per_page=1")
+            COMMIT_DATE=$(echo "$COMMIT_DATA" | jq -r '.[0].commit.committer.date // empty')
+            if [ -z "$COMMIT_DATE" ]; then
+              COMMIT_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+            fi
+            
+            # Append compiled dataset with the live timestamp attribute
+            jq --arg id "$folder" \
+               --arg name "$(echo $folder | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1')" \
+               --arg content "$CLEAN_CONTENT" \
+               --arg date "$COMMIT_DATE" \
+               '. += [{id: $id, name: $name, markdown: $content, timestamp: $date, url: "https://github.com/forcedotcom/sf-skills/tree/main/skills/\($id)"}]' data.json > tmp.json && mv tmp.json data.json
           done
 
       - name: Commit and Push Updates
@@ -49,5 +52,5 @@ jobs:
           git config --global user.name "GitHub Action Bot"
           git config --global user.email "actions@github.com"
           git add data.json
-          git diff-index --quiet HEAD || git commit -m "Automated Sync: Polled forcedotcom/sf-skills updates"
+          git diff-index --quiet HEAD || git commit -m "Automated Sync: Polled forcedotcom/sf-skills updates with timestamps"
           git push origin main
