@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Agentforce Skills Registry Console</title>
-    <!-- Tailwind CSS Engine -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Marked.js for execution markdown parsing -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         .prose code { background: #f1f5f9; padding: 0.15rem 0.35rem; border-radius: 0.25rem; font-size: 0.85em; color: #0f172a; font-family: monospace; }
@@ -16,13 +14,12 @@
         .prose h2 { font-size: 1.25rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.25rem; }
         .prose h3 { font-size: 1.1rem; }
         .prose p { margin-bottom: 1rem; line-height: 1.7; font-size: 0.95rem; color: #334155; }
-        .prose ul, .prose ol { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1rem; font-size: 0.95rem; color: #334155; space-y: 0.25rem; }
+        .prose ul, .prose ol { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1rem; font-size: 0.95rem; color: #334155; }
         .prose strong { color: #0f172a; font-weight: 600; }
     </style>
 </head>
 <body class="bg-[#f3f4f6] text-[#181818] font-sans min-h-screen flex flex-col antialiased">
 
-    <!-- Salesforce Agentforce Simulation Header -->
     <header class="bg-[#1b253a] text-white border-b border-[#0f172a] sticky top-0 z-50 shadow-md">
         <div class="max-w-[1600px] mx-auto px-4 h-14 flex items-center justify-between">
             <div class="flex items-center space-x-3">
@@ -47,7 +44,6 @@
         </div>
     </header>
 
-    <!-- Sub-Nav Utility Control Bar -->
     <div class="bg-white border-b border-gray-200 px-4 h-10 flex items-center justify-between text-xs text-gray-500 shadow-sm">
         <div class="flex items-center space-x-2 font-mono">
             <span>Org: <strong class="text-gray-700">Skills-Global-Mirror</strong></span>
@@ -59,13 +55,10 @@
         </div>
     </div>
 
-    <!-- App Canvas Console Split-Pane Layout -->
     <main class="max-w-[1600px] w-full mx-auto p-4 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
         
-        <!-- Sidebar Navigation Deck -->
         <section class="lg:col-span-3 flex flex-col space-y-3">
             
-            <!-- Metric Pills Block Widget -->
             <div class="grid grid-cols-2 gap-2 p-3 bg-[#111827] text-white rounded-lg shadow-md border border-gray-800">
                 <div class="p-1">
                     <p class="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Active Actions</p>
@@ -80,7 +73,6 @@
                 </div>
             </div>
 
-            <!-- Search Panel -->
             <div class="bg-white p-3.5 rounded-lg border border-gray-200 shadow-sm">
                 <label class="block text-[11px] font-bold uppercase text-gray-500 mb-1">Search Agent Repositories</label>
                 <div class="relative">
@@ -89,22 +81,19 @@
                 </div>
             </div>
 
-            <!-- Action Library Tree List Selector -->
             <div class="bg-white rounded-lg border border-gray-200 shadow-sm flex-1 flex flex-col overflow-hidden">
                 <div class="px-3 py-2 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
                     <span class="text-[11px] font-bold uppercase tracking-wider text-gray-500">Action Inventory Tree</span>
-                    <span class="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded font-mono font-bold">Local Cache</span>
+                    <span class="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded font-mono font-bold">Categorized</span>
                 </div>
-                <div id="skillsList" class="divide-y divide-gray-100 overflow-y-auto flex-1 max-h-[50vh] lg:max-h-[62vh]">
-                    <div class="p-6 text-center text-xs text-gray-400 italic">Interrogating remote database metadata layers...</div>
+                <div id="skillsList" class="overflow-y-auto flex-1 max-h-[50vh] lg:max-h-[62vh] bg-slate-50/50">
+                    <div class="p-6 text-center text-xs text-gray-400 italic">Sorting action tree by ecosystem namespaces...</div>
                 </div>
             </div>
         </section>
 
-        <!-- Main Workspace Interface Panel Canvas -->
         <section class="lg:col-span-9 flex flex-col min-h-[500px]">
             
-            <!-- Empty Welcome Display Slate State -->
             <div id="welcomeState" class="bg-white border border-gray-200 rounded-lg p-16 text-center my-auto shadow-sm flex flex-col items-center justify-center flex-1">
                 <div class="w-12 h-12 bg-sky-50 text-sky-600 border border-sky-200 rounded-lg flex items-center justify-center font-bold text-lg mb-3 shadow-sm select-none">
                     🎛️
@@ -113,10 +102,8 @@
                 <p class="text-xs text-gray-500 max-w-sm mt-1">Select an action structure node item from the repository navigation tree layout configuration menu deck to parse documentation parameters or retrieve deployment shell configurations.</p>
             </div>
 
-            <!-- Dynamic Agent Element Display Detail Block -->
             <div id="detailState" class="hidden bg-white border border-gray-200 rounded-lg shadow-sm flex-1 flex flex-col overflow-hidden">
                 
-                <!-- Action Configuration Metadata Card Top Header Panel -->
                 <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div class="flex items-center space-x-3">
                         <div class="w-9 h-9 bg-sky-600 text-white rounded flex items-center justify-center font-mono text-xs font-bold shadow-sm select-none">
@@ -140,25 +127,19 @@
                     </div>
                 </div>
 
-                <!-- Live Interface Content Workspace Layout Pane Body -->
                 <div class="p-5 overflow-y-auto flex-1 grid grid-cols-1 xl:grid-cols-12 gap-5 bg-gray-50/50">
                     
-                    <!-- Left: Technical Readout Documentation Area -->
                     <div class="xl:col-span-8 bg-white p-6 rounded-lg border border-gray-200 shadow-sm flex flex-col max-w-full overflow-hidden">
                         <div class="text-[10px] font-bold tracking-wider text-gray-400 uppercase mb-4 border-b border-gray-100 pb-2">Action Functional Documentation (SKILL.md)</div>
                         <div class="overflow-y-auto flex-1 prose max-w-none text-xs" id="markdownContainer">
-                            <!-- Injected Runtime Parsed Markdown Body String Output Block -->
-                        </div>
+                            </div>
                     </div>
 
-                    <!-- Right: Developer Command Implementation Engine Terminal Side-Block Panel -->
                     <div class="xl:col-span-4 space-y-3 flex flex-col">
                         
-                        <!-- Premium Terminal Shell Ingestion Module Integration Box -->
                         <div class="bg-gray-900 border border-gray-800 rounded-lg p-3.5 shadow-md flex flex-col">
                             <span class="text-[9px] font-bold tracking-widest text-sky-400 uppercase mb-2 block">Agent Execution Dependency String</span>
                             
-                            <!-- Copy-To-Clipboard Code Component Widget Frame -->
                             <div class="flex items-center justify-between bg-black text-gray-300 font-mono text-[11px] p-2.5 rounded border border-gray-800 shadow-inner">
                                 <div class="flex items-center space-x-1.5 truncate">
                                     <span class="text-sky-500 font-bold select-none">$</span>
@@ -174,7 +155,6 @@
                             </p>
                         </div>
 
-                        <!-- System Parameters Visual Mock-Properties Block Frame -->
                         <div class="bg-white border border-gray-200 rounded-lg p-3.5 shadow-sm flex-1">
                             <span class="text-[9px] font-bold tracking-widest text-gray-400 uppercase mb-2.5 block">Agent Interface Settings</span>
                             <div class="space-y-2 text-[11px]">
@@ -199,7 +179,6 @@
         </section>
     </main>
 
-    <!-- UI State JavaScript Engine -->
     <script>
         let allSkills = [];
         let selectedSkillId = null;
@@ -209,30 +188,63 @@
                 const response = await fetch('./data.json');
                 allSkills = await response.json();
                 document.getElementById('skillCount').innerText = allSkills.length;
-                renderList(allSkills);
+                renderCategorizedTree(allSkills);
             } catch (err) {
                 console.error("Data tracking failure.", err);
             }
         }
 
-        function renderList(skills) {
+        // Dynamically segments skill keys by namespace prefixes
+        function getCategory(id) {
+            const parts = id.split('-');
+            if (parts.length > 1) {
+                // Capitalize first namespace part (e.g., 'platform' -> 'Platform Actions')
+                return parts[0].charAt(0).toUpperCase() + parts[0].slice(1) + ' Actions';
+            }
+            return 'General Core Extensions';
+        }
+
+        function renderCategorizedTree(skills) {
             const container = document.getElementById('skillsList');
             if (skills.length === 0) {
                 container.innerHTML = `<div class="p-6 text-center text-xs text-gray-400 italic">No assets track filter input.</div>`;
                 return;
             }
-            container.innerHTML = skills.map(skill => `
-                <button onclick="selectSkill('${skill.id}')" class="w-full text-left px-3.5 py-2.5 hover:bg-gray-50/80 border-l-2 transition-all flex flex-col space-y-0.5 ${selectedSkillId === skill.id ? 'bg-sky-50/50 border-sky-600 shadow-sm' : 'border-transparent'}">
-                    <span class="text-xs font-bold text-gray-800 truncate">${skill.name}</span>
-                    <span class="text-[10px] font-mono text-gray-400 truncate">${skill.id}</span>
-                </button>
-            `).join('');
+
+            // 1. Group items into category arrays
+            const grouped = {};
+            skills.forEach(skill => {
+                const cat = getCategory(skill.id);
+                if (!grouped[cat]) grouped[cat] = [];
+                grouped[cat].push(skill);
+            });
+
+            // 2. Render out structured collapsible headers
+            container.innerHTML = Object.keys(grouped).sort().map(category => {
+                const categoryItems = grouped[category];
+                return `
+                    <div class="border-b border-gray-200 bg-white">
+                        <div class="px-4 py-2 bg-slate-100/80 flex justify-between items-center select-none font-bold text-[11px] text-gray-600 tracking-wide uppercase border-y border-slate-200/60">
+                            <span>${category}</span>
+                            <span class="bg-slate-200 text-slate-700 text-[9px] px-1.5 py-0.2 rounded-full">${categoryItems.length}</span>
+                        </div>
+                        <div class="divide-y divide-gray-100">
+                            ${categoryItems.map(skill => `
+                                <button onclick="selectSkill('${skill.id}')" class="w-full text-left px-5 py-2.5 hover:bg-gray-50/80 border-l-2 transition-all flex flex-col space-y-0.5 ${selectedSkillId === skill.id ? 'bg-sky-50/60 border-sky-600 shadow-sm' : 'border-transparent'}">
+                                    <span class="text-xs font-semibold text-gray-800 truncate">${skill.name}</span>
+                                    <span class="text-[10px] font-mono text-gray-400 truncate">${skill.id}</span>
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
         function filterSkills() {
             const query = document.getElementById('searchInput').value.toLowerCase();
             const filtered = allSkills.filter(s => s.id.toLowerCase().includes(query) || s.name.toLowerCase().includes(query));
-            renderList(filtered);
+            renderCategorizedTree(filtered);
         }
 
         function selectSkill(id) {
@@ -240,7 +252,10 @@
             const skill = allSkills.find(s => s.id === id);
             if (!skill) return;
 
-            filterSkills();
+            // Maintain category selection highlighted frame state updates
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = allSkills.filter(s => s.id.toLowerCase().includes(query) || s.name.toLowerCase().includes(query));
+            renderCategorizedTree(filtered);
 
             document.getElementById('welcomeState').classList.add('hidden');
             document.getElementById('detailState').classList.remove('hidden');
@@ -251,10 +266,8 @@
             
             document.getElementById('terminalCmd').innerText = `npx skills add forcedotcom/sf-skills/skills/${skill.id}`;
             
-            // Core Sanitizer Implementation Data Vector Map
             let cleanMarkdown = skill.markdown;
             
-            // 1. Strip structural literal bounding quotes from stringification
             if (cleanMarkdown.startsWith('"') && cleanMarkdown.endsWith('"')) {
                 cleanMarkdown = cleanMarkdown.slice(1, -1);
             }
@@ -262,7 +275,6 @@
                 cleanMarkdown = cleanMarkdown.slice(2, -2);
             }
 
-            // 2. Decode serialized system strings back to true readable symbols
             cleanMarkdown = cleanMarkdown
                 .replace(/\\n/g, '\n')
                 .replace(/\\"/g, '"')
@@ -271,10 +283,8 @@
                 .replace(/\\u2014/g, '—')
                 .replace(/\\u2192/g, '→');
 
-            // 3. Clean raw metadata headers and structural configurations (YAML front-matter blocks)
             cleanMarkdown = cleanMarkdown.replace(/^---[\s\S]*?---\s*/m, '');
             
-            // 4. Inject execution readout map strings into interpreter engine
             document.getElementById('markdownContainer').innerHTML = marked.parse(cleanMarkdown);
         }
 
