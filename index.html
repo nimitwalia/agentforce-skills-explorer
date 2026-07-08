@@ -84,7 +84,7 @@
             <div class="bg-white rounded-lg border border-gray-200 shadow-sm flex-1 flex flex-col overflow-hidden">
                 <div class="px-3 py-2 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
                     <span class="text-[11px] font-bold uppercase tracking-wider text-gray-500">Action Inventory Tree</span>
-                    <span class="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded font-mono font-bold">Categorized</span>
+                    <span class="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded font-mono font-bold">Collapsible</span>
                 </div>
                 <div id="skillsList" class="overflow-y-auto flex-1 max-h-[50vh] lg:max-h-[62vh] bg-slate-50/50">
                     <div class="p-6 text-center text-xs text-gray-400 italic">Sorting action tree by ecosystem namespaces...</div>
@@ -182,26 +182,35 @@
     <script>
         let allSkills = [];
         let selectedSkillId = null;
+        let expandedCategories = {};
 
         async function init() {
             try {
                 const response = await fetch('./data.json');
                 allSkills = await response.json();
                 document.getElementById('skillCount').innerText = allSkills.length;
+                
+                allSkills.forEach(skill => {
+                    expandedCategories[getCategory(skill.id)] = true;
+                });
+
                 renderCategorizedTree(allSkills);
             } catch (err) {
                 console.error("Data tracking failure.", err);
             }
         }
 
-        // Dynamically segments skill keys by namespace prefixes
         function getCategory(id) {
             const parts = id.split('-');
             if (parts.length > 1) {
-                // Capitalize first namespace part (e.g., 'platform' -> 'Platform Actions')
                 return parts[0].charAt(0).toUpperCase() + parts[0].slice(1) + ' Actions';
             }
             return 'General Core Extensions';
+        }
+
+        function toggleCategory(categoryName) {
+            expandedCategories[categoryName] = !expandedCategories[categoryName];
+            filterSkills();
         }
 
         function renderCategorizedTree(skills) {
@@ -211,7 +220,6 @@
                 return;
             }
 
-            // 1. Group items into category arrays
             const grouped = {};
             skills.forEach(skill => {
                 const cat = getCategory(skill.id);
@@ -219,16 +227,23 @@
                 grouped[cat].push(skill);
             });
 
-            // 2. Render out structured collapsible headers
             container.innerHTML = Object.keys(grouped).sort().map(category => {
                 const categoryItems = grouped[category];
+                const isExpanded = expandedCategories[category];
+                
                 return `
                     <div class="border-b border-gray-200 bg-white">
-                        <div class="px-4 py-2 bg-slate-100/80 flex justify-between items-center select-none font-bold text-[11px] text-gray-600 tracking-wide uppercase border-y border-slate-200/60">
-                            <span>${category}</span>
-                            <span class="bg-slate-200 text-slate-700 text-[9px] px-1.5 py-0.2 rounded-full">${categoryItems.length}</span>
+                        <div onclick="toggleCategory('${category}')" class="px-4 py-2.5 bg-slate-100/90 hover:bg-slate-200/60 flex justify-between items-center select-none font-bold text-[11px] text-gray-600 tracking-wide uppercase border-y border-slate-200/40 cursor-pointer transition-colors">
+                            <div class="flex items-center space-x-2">
+                                <svg class="w-3 h-3 text-gray-400 transform transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path>
+                                </svg>
+                                <span>${category}</span>
+                            </div>
+                            <span class="bg-slate-200 text-slate-700 text-[9px] px-1.5 py-0.2 rounded-full font-mono">${categoryItems.length}</span>
                         </div>
-                        <div class="divide-y divide-gray-100">
+                        
+                        <div class="${isExpanded ? 'block' : 'hidden'} divide-y divide-gray-100 transition-all">
                             ${categoryItems.map(skill => `
                                 <button onclick="selectSkill('${skill.id}')" class="w-full text-left px-5 py-2.5 hover:bg-gray-50/80 border-l-2 transition-all flex flex-col space-y-0.5 ${selectedSkillId === skill.id ? 'bg-sky-50/60 border-sky-600 shadow-sm' : 'border-transparent'}">
                                     <span class="text-xs font-semibold text-gray-800 truncate">${skill.name}</span>
@@ -252,7 +267,6 @@
             const skill = allSkills.find(s => s.id === id);
             if (!skill) return;
 
-            // Maintain category selection highlighted frame state updates
             const query = document.getElementById('searchInput').value.toLowerCase();
             const filtered = allSkills.filter(s => s.id.toLowerCase().includes(query) || s.name.toLowerCase().includes(query));
             renderCategorizedTree(filtered);
@@ -275,9 +289,11 @@
                 cleanMarkdown = cleanMarkdown.slice(2, -2);
             }
 
+            // Enhanced character decoder pipeline mapping emojis & raw symbols
             cleanMarkdown = cleanMarkdown
                 .replace(/\\n/g, '\n')
                 .replace(/\\"/g, '"')
+                .replace(/\\u26a0\\ufe0f/g, '⚠️') // Map raw critical warning unicode character
                 .replace(/\\u00b0/g, '°')
                 .replace(/\\u2013/g, '–')
                 .replace(/\\u2014/g, '—')
