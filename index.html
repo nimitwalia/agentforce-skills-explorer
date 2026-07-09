@@ -151,6 +151,7 @@
         let selectedSkillId = null;
         let expandedFolders = {};
         let activeEcosystemSignature = "GENERIC";
+        let activeDefaultBranch = "main"; // New dynamic baseline parameter fallback
         const NEW_LOOKBACK_DAYS = 7;
 
         async function fetchGitHubData(endpoint) {
@@ -179,25 +180,26 @@
             currentOwnerRepo = repoValue;
             document.getElementById('currentRepoLabel').innerText = repoValue;
             const treeContainer = document.getElementById('treeLoadingContainer');
-            treeContainer.innerHTML = `<div class="p-12 text-center text-xs text-gray-500"><span class="animate-pulse font-mono block">Ingesting repository via Git Trees Core API...</span></div>`;
+            treeContainer.innerHTML = `<div class="p-12 text-center text-xs text-gray-500"><span class="animate-pulse font-mono block">Analyzing repository branch configurations...</span></div>`;
 
             try {
+                // NEW: Fetch general repo metadata to discover the actual active default branch dynamically
+                const repoMetadata = await fetchGitHubData("");
+                activeDefaultBranch = repoMetadata.default_branch || "main";
+
                 const rootContents = await fetchGitHubData("contents");
                 detectRepositoryProfileSignature(rootContents);
 
-                let treeResponse;
-                try {
-                    treeResponse = await fetchGitHubData("git/trees/main?recursive=1");
-                } catch(e) {
-                    treeResponse = await fetchGitHubData("git/trees/master?recursive=1");
-                }
+                // Fetch full tree using the dynamically resolved default branch
+                const treeResponse = await fetchGitHubData(`git/trees/${activeDefaultBranch}?recursive=1`);
                 
                 repositoryTreeData = treeResponse.tree.map(item => ({
                     name: item.path.split('/').pop(),
                     path: item.path,
                     type: item.type === 'tree' ? 'dir' : 'file',
-                    timestamp: item.type === 'blob' ? new Date().toISOString() : null, // Default placeholder
-                    download_url: `https://raw.githubusercontent.com/${currentOwnerRepo}/main/${item.path}`
+                    timestamp: item.type === 'blob' ? new Date().toISOString() : null,
+                    // Use active branch name for direct raw content fetching paths
+                    download_url: `https://raw.githubusercontent.com/${currentOwnerRepo}/${activeDefaultBranch}/${item.path}`
                 }));
 
                 document.getElementById('itemCountBadge').innerText = repositoryTreeData.length;
@@ -335,7 +337,6 @@
                 }
 
                 if (ext === 'md') {
-                    // Advanced character cleaning sequences
                     let cleanMarkdown = rawText;
                     if (cleanMarkdown.startsWith('"') && cleanMarkdown.endsWith('"')) cleanMarkdown = cleanMarkdown.slice(1, -1);
                     cleanMarkdown = cleanMarkdown
