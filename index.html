@@ -343,11 +343,17 @@
             }
         }
 
+        // FIXED STRUCTURAL HIERARCHY SCANNER
         function detectCompositeSignaturesFromTree(treeNodes) {
-            const paths = treeNodes.map(n => n.path.toLowerCase()); // Fixed to use lowercase bounds handling
+            const paths = treeNodes.map(n => n.path.toLowerCase());
             const badgeContainer = document.getElementById('badgeContainer');
             
-            activeSignatures.AGENTFORCE_SKILLS = paths.some(p => p.startsWith('skills/') && p.endsWith('skill.json'));
+            // Fixed: Check for files nested exactly inside subfolders of the skills directory (e.g., skills/foo/bar)
+            activeSignatures.AGENTFORCE_SKILLS = paths.some(p => {
+                const parts = p.split('/');
+                return parts[0] === 'skills' && parts.length >= 3;
+            });
+            
             activeSignatures.SALESFORCE_DX = paths.includes('sfdx-project.json');
             activeSignatures.NODE_JS = paths.includes('package.json');
             
@@ -508,7 +514,6 @@
             }
         }
 
-        // FIXED: Using lowercase path verification parameters to handle mixed cases safely
         function renderCompositeSidebarWidgets(node, rawText) {
             const stackContainer = document.getElementById('widgetWorkspaceStack');
             const lowerPath = node.path.toLowerCase();
