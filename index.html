@@ -29,7 +29,7 @@
                 </div>
                 <div>
                     <h1 class="text-sm font-bold text-slate-100">Universal Git Visualiser</h1>
-                    <p class="text-[10px] text-sky-400 font-mono tracking-wider">Composite Multi-Signature Architecture</p>
+                    <p class="text-[10px] text-sky-400 font-mono tracking-wider">Manifest-Validated Ingestion Architecture</p>
                 </div>
             </div>
 
@@ -323,7 +323,7 @@
                     download_url: `https://raw.githubusercontent.com/${currentOwnerRepo}/${activeDefaultBranch}/${item.path}`
                 }));
 
-                detectCompositeSignaturesFromTree(repositoryTreeData);
+                detectManifestSignaturesFromTree(repositoryTreeData);
 
                 document.getElementById('itemCountBadge').innerText = repositoryTreeData.length;
                 document.getElementById('shareContainer').classList.remove('hidden');
@@ -343,15 +343,16 @@
             }
         }
 
-        // FIXED STRUCTURAL HIERARCHY SCANNER
-        function detectCompositeSignaturesFromTree(treeNodes) {
+        // FIXED STRUCTURAL MANIFEST SCANNER
+        function detectManifestSignaturesFromTree(treeNodes) {
             const paths = treeNodes.map(n => n.path.toLowerCase());
             const badgeContainer = document.getElementById('badgeContainer');
             
-            // Fixed: Check for files nested exactly inside subfolders of the skills directory (e.g., skills/foo/bar)
+            // Core Change: Match for explicit structural validation against the real framework manifest standard
             activeSignatures.AGENTFORCE_SKILLS = paths.some(p => {
                 const parts = p.split('/');
-                return parts[0] === 'skills' && parts.length >= 3;
+                const filename = parts[parts.length - 1];
+                return parts[0] === 'skills' && (filename === 'skill.json' || filename === 'skill.md');
             });
             
             activeSignatures.SALESFORCE_DX = paths.includes('sfdx-project.json');
