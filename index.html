@@ -29,7 +29,7 @@
                 </div>
                 <div>
                     <h1 class="text-sm font-bold text-slate-100">Universal Git Visualiser</h1>
-                    <p class="text-[10px] text-sky-400 font-mono tracking-wider">State-Preserving Ingestion Architecture</p>
+                    <p class="text-[10px] text-sky-400 font-mono tracking-wider">Composite Multi-Signature Architecture</p>
                 </div>
             </div>
 
@@ -55,7 +55,12 @@
         <div class="flex flex-wrap items-center gap-2 font-mono">
             <span>Target Repo: <strong id="currentRepoLabel" class="text-gray-700">None</strong></span>
             <span>•</span>
-            <span>Ecosystem Profile: <span id="ecosystemBadge" class="bg-gray-100 text-gray-700 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Unknown</span></span>
+            <span class="flex items-center space-x-1">
+                <span>Ecosystem Profile Matrix:</span> 
+                <span id="badgeContainer" class="flex items-center gap-1.5">
+                    <span class="bg-gray-100 text-gray-700 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Unknown</span>
+                </span>
+            </span>
             <span id="shareContainer" class="hidden pl-2">
                 <button onclick="copyShareLink()" class="bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-600 px-2 py-0.5 rounded text-[10px] font-bold transition-all">📋 Copy Deep-Link</button>
             </span>
@@ -139,23 +144,8 @@
                         <div class="overflow-y-auto flex-1 prose max-w-none text-xs" id="markdownContainer"></div>
                     </div>
 
-                    <div class="xl:col-span-4 space-y-3 flex flex-col">
-                        <div class="bg-gray-900 border border-gray-800 rounded-lg p-3.5 shadow-md flex flex-col">
-                            <span id="cliWidgetTitle" class="text-[9px] font-bold tracking-widest text-sky-400 uppercase mb-2 block">Command Hook String</span>
-                            <div class="flex items-center justify-between bg-black text-gray-300 font-mono text-[11px] p-2.5 rounded border border-gray-800 shadow-inner">
-                                <div class="flex items-center space-x-1.5 truncate">
-                                    <span class="text-indigo-400 font-bold select-none">$</span>
-                                    <span class="truncate font-medium text-gray-100" id="terminalCmd">Command string</span>
-                                </div>
-                            </div>
-                            <p id="cliWidgetDescription" class="text-[10px] text-gray-400 mt-2 leading-relaxed">Context installation parameters metric descriptions.</p>
+                    <div class="xl:col-span-4 space-y-4 flex flex-col" id="widgetWorkspaceStack">
                         </div>
-
-                        <div class="bg-white border border-gray-200 rounded-lg p-3.5 shadow-sm flex-1">
-                            <span class="text-[9px] font-bold tracking-widest text-gray-400 uppercase mb-2.5 block">Interface Metrics Matrix</span>
-                            <div class="space-y-2 text-[11px]" id="metaPropertiesBlock"></div>
-                        </div>
-                    </div>
                 </div>
             </div>
         </section>
@@ -166,7 +156,15 @@
         let repositoryTreeData = [];
         let selectedSkillId = null;
         let expandedFolders = {};
-        let activeEcosystemSignature = "GENERIC";
+        
+        // Composite Flags replace the single string property ecosystem flag
+        let activeSignatures = {
+            AGENTFORCE_SKILLS: false,
+            SALESFORCE_DX: false,
+            NODE_JS: false,
+            GENERIC: true
+        };
+        
         let activeDefaultBranch = "main";
 
         function parseRepositoryInput(inputString) {
@@ -319,7 +317,7 @@
                 activeDefaultBranch = repoMetadata.default_branch || "main";
 
                 const rootContents = await fetchGitHubData("contents");
-                detectRepositoryProfileSignature(rootContents);
+                detectCompositeSignatures(rootContents);
 
                 const treeResponse = await fetchGitHubData(`git/trees/${activeDefaultBranch}?recursive=1`);
                 
@@ -348,28 +346,34 @@
             }
         }
 
-        function detectRepositoryProfileSignature(filesArray) {
+        // FIXED: Independent, concurrent signature evaluation maps multiple badges at once
+        function detectCompositeSignatures(filesArray) {
             const names = filesArray.map(f => f.name);
-            const badge = document.getElementById('ecosystemBadge');
-            const hasSkills = filesArray.some(f => f.name === 'skills' && f.type === 'dir');
+            const badgeContainer = document.getElementById('badgeContainer');
+            
+            // Reset composite matrix mapping arrays
+            activeSignatures.AGENTFORCE_SKILLS = names.includes('package.json') && filesArray.some(f => f.name === 'skills' && f.type === 'dir');
+            activeSignatures.SALESFORCE_DX = names.includes('sfdx-project.json');
+            activeSignatures.NODE_JS = names.includes('package.json');
+            
+            // If any known signature matches, flip generic base off
+            activeSignatures.GENERIC = !(activeSignatures.AGENTFORCE_SKILLS || activeSignatures.SALESFORCE_DX || activeSignatures.NODE_JS);
 
-            if (names.includes('package.json') && hasSkills) {
-                activeEcosystemSignature = "AGENTFORCE_SKILLS";
-                badge.innerText = "Agentforce Skills Registry";
-                badge.className = "bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider";
-            } else if (names.includes('sfdx-project.json')) {
-                activeEcosystemSignature = "SALESFORCE_DX";
-                badge.innerText = "Salesforce DX Matrix";
-                badge.className = "bg-sky-100 text-sky-800 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider";
-            } else if (names.includes('package.json')) {
-                activeEcosystemSignature = "NODE_JS";
-                badge.innerText = "Node.js Context Package";
-                badge.className = "bg-green-100 text-green-800 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider";
-            } else {
-                activeEcosystemSignature = "GENERIC";
-                badge.innerText = "Generic Tree Explorer";
-                badge.className = "bg-gray-100 text-gray-700 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider";
+            let badgesHtml = "";
+            if (activeSignatures.AGENTFORCE_SKILLS) {
+                badgesHtml += `<span class="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider shadow-sm border border-emerald-200">Agentforce Registry</span>`;
             }
+            if (activeSignatures.SALESFORCE_DX) {
+                badgesHtml += `<span class="bg-sky-100 text-sky-800 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider shadow-sm border border-sky-200">Salesforce DX</span>`;
+            }
+            if (activeSignatures.NODE_JS && !activeSignatures.AGENTFORCE_SKILLS) {
+                badgesHtml += `<span class="bg-green-100 text-green-800 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider shadow-sm border border-green-200">Node.js Module</span>`;
+            }
+            if (activeSignatures.GENERIC) {
+                badgesHtml += `<span class="bg-gray-100 text-gray-700 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider shadow-sm border border-gray-200">Generic Base</span>`;
+            }
+            
+            badgeContainer.innerHTML = badgesHtml;
         }
 
         function toggleFolder(folderPath) {
@@ -504,62 +508,93 @@
                     renderBox.innerHTML = `<pre class="bg-slate-900 text-slate-100 p-4 rounded font-mono text-xs overflow-x-auto leading-relaxed"><code>${safeText}</code></pre>`;
                 }
 
-                renderAdaptiveSidebarWidgets(node, rawText);
+                // Call the composite rendering engine patch block
+                renderCompositeSidebarWidgets(node, rawText);
             } catch (e) {
                 renderBox.innerHTML = `<span class="text-rose-600 font-medium font-mono text-xs">Failed to stream file data vectors.</span>`;
             }
         }
 
-        function renderAdaptiveSidebarWidgets(node, rawText) {
-            const title = document.getElementById('cliWidgetTitle');
-            const cmd = document.getElementById('terminalCmd');
-            const desc = document.getElementById('cliWidgetDescription');
-            const propsBlock = document.getElementById('metaPropertiesBlock');
+        // FIXED: Replaced old exclusive structure with additive node widget mapping block loops
+        function renderCompositeSidebarWidgets(node, rawText) {
+            const stackContainer = document.getElementById('widgetWorkspaceStack');
+            let compositeHtml = "";
 
-            title.innerText = "Git Repository Clone Target";
-            cmd.innerText = `git clone https://github.com/${currentOwnerRepo}.git`;
-            desc.innerText = "Clone this entire code repository context frame downward into your local development system workspace.";
-
-            let customPropertiesHtml = `
-                <div><span class="text-gray-400 block">Relative Node:</span><strong class="text-gray-700 font-mono text-[10px] break-all">${node.path}</strong></div>
-                <div><span class="text-gray-400 block">Node Configuration:</span><strong class="text-gray-600 uppercase font-mono">${node.type}</strong></div>
+            // Baseline global properties metrics template card (Always Renders)
+            compositeHtml += `
+                <div class="bg-white border border-gray-200 rounded-lg p-3.5 shadow-sm">
+                    <span class="text-[9px] font-bold tracking-widest text-gray-400 uppercase mb-2 block">Interface Metrics Matrix</span>
+                    <div class="space-y-2 text-[11px]">
+                        <div><span class="text-gray-400 block">Relative Node:</span><strong class="text-gray-700 font-mono text-[10px] break-all">${node.path}</strong></div>
+                        <div><span class="text-gray-400 block">Node Configuration:</span><strong class="text-gray-600 uppercase font-mono">${node.type}</strong></div>
+                    </div>
+                </div>
             `;
 
-            if (activeEcosystemSignature === "AGENTFORCE_SKILLS" && node.path.startsWith('skills/')) {
-                title.innerText = "Agentforce Skill Dependency Addition Module";
+            // Condition 1: Add Agentforce panel if the repository carries the framework signature
+            if (activeSignatures.AGENTFORCE_SKILLS && node.path.startsWith('skills/')) {
                 const skillId = node.path.split('/')[1] || "target-skill";
-                cmd.innerText = `npx skills add ${currentOwnerRepo}/skills/${skillId}`;
-                desc.innerText = "Execute this command array within local Salesforce project directory containers to inject this capability node structure matrix.";
-            } else if (activeEcosystemSignature === "SALESFORCE_DX") {
-                title.innerText = "Salesforce DX CLI Deploy Module";
-                cmd.innerText = `sf project deploy start --manifest manifest/package.xml`;
-                desc.innerText = "Deploy individual metadata code variables up into active default scratch-org sandbox runtime nodes.";
-            } else if (activeEcosystemSignature === "NODE_JS") {
-                title.innerText = "NPM Context Package Ingestion Hook";
-                cmd.innerText = `npm install --save-dev`;
-                desc.innerText = "Install modular infrastructure packages down into local node module system directories.";
+                compositeHtml += `
+                    <div class="bg-slate-900 border border-emerald-800 rounded-lg p-3.5 shadow-md flex flex-col">
+                        <span class="text-[9px] font-bold tracking-widest text-emerald-400 uppercase mb-2 block">Agentforce Skill Registry Hook</span>
+                        <div class="flex items-center justify-between bg-black text-gray-300 font-mono text-[11px] p-2.5 rounded border border-gray-800 shadow-inner">
+                            <div class="flex items-center space-x-1.5 truncate">
+                                <span class="text-emerald-500 font-bold select-none">$</span>
+                                <span class="truncate font-medium text-gray-100">npx skills add ${currentOwnerRepo}/skills/${skillId}</span>
+                            </div>
+                        </div>
+                        <p class="text-[10px] text-gray-400 mt-2 leading-relaxed">Inject this localized target capability node package down into active Salesforce dynamic runtime agents.</p>
+                    </div>
+                `;
             }
 
-            propsBlock.innerHTML = customPropertiesHtml;
+            // Condition 2: Add Salesforce DX deploy card concurrently if the repo contains the platform config file
+            if (activeSignatures.SALESFORCE_DX) {
+                compositeHtml += `
+                    <div class="bg-slate-900 border border-sky-800 rounded-lg p-3.5 shadow-md flex flex-col">
+                        <span class="text-[9px] font-bold tracking-widest text-sky-400 uppercase mb-2 block">Salesforce DX CLI Deploy Engine</span>
+                        <div class="flex items-center justify-between bg-black text-gray-300 font-mono text-[11px] p-2.5 rounded border border-gray-800 shadow-inner">
+                            <div class="flex items-center space-x-1.5 truncate">
+                                <span class="text-sky-500 font-bold select-none">$</span>
+                                <span class="truncate font-medium text-gray-100">sf project deploy start --manifest manifest/package.xml</span>
+                            </div>
+                        </div>
+                        <p class="text-[10px] text-gray-400 mt-2 leading-relaxed">Push local source changes or metadata elements up into assigned scratch orgs or sandbox containers.</p>
+                    </div>
+                `;
+            }
+
+            // Condition 3: Handle generic baseline clone indicators if no explicit frameworks match
+            if (activeSignatures.GENERIC || (!activeSignatures.AGENTFORCE_SKILLS && !activeSignatures.SALESFORCE_DX)) {
+                compositeHtml += `
+                    <div class="bg-slate-900 border border-gray-800 rounded-lg p-3.5 shadow-md flex flex-col">
+                        <span class="text-[9px] font-bold tracking-widest text-indigo-400 uppercase mb-2 block">Git Repository Clone Target</span>
+                        <div class="flex items-center justify-between bg-black text-gray-300 font-mono text-[11px] p-2.5 rounded border border-gray-800 shadow-inner">
+                            <div class="flex items-center space-x-1.5 truncate">
+                                <span class="text-indigo-400 font-bold select-none">$</span>
+                                <span class="truncate font-medium text-gray-100">git clone https://github.com/${currentOwnerRepo}.git</span>
+                            </div>
+                        </div>
+                        <p class="text-[10px] text-gray-400 mt-2 leading-relaxed">Clone this entire open-source repository context framework structure down into a local terminal terminal shell.</p>
+                    </div>
+                `;
+            }
+
+            stackContainer.innerHTML = compositeHtml;
         }
 
-        // Adaptive Entry Loading Manager Logic Block
         window.addEventListener('DOMContentLoaded', () => {
             loadSavedPAT();
             renderRecentsDeck();
             renderFavoritesDropdown();
             
-            // Check for explicit share link query keys first
             const deepLinkRepo = checkUrlDeepLinks();
-            
             if (deepLinkRepo) {
                 loadRemoteRepository();
             } else {
-                // FALLBACK SMART SEQUENCING: Look for last used active repo entry item, or fallback to the most recent bookmarked item
                 const recents = JSON.parse(localStorage.getItem('git_visualiser_recents') || '[]');
                 const favs = JSON.parse(localStorage.getItem('git_visualiser_favs') || '[]');
                 const fallbackRepo = recents[0] || favs[0] || "";
-                
                 if (fallbackRepo) {
                     document.getElementById('repoInput').value = fallbackRepo;
                     loadRemoteRepository();
