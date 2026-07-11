@@ -67,7 +67,7 @@
     <div class="bg-emerald-50 border-b border-emerald-100 px-4 py-1.5 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-emerald-800 shadow-inner">
         <div class="flex items-center space-x-1.5 font-medium">
             <span>🛡️</span>
-            <span><strong>Privacy Guarantee:</strong> Nothing you enter here is sent to any external server — everything executes entirely within your browser runtime sandbox sandbox layer.</span>
+            <span><strong>Privacy:</strong> Runs entirely in your browser. Your token and requests go directly to GitHub's API and never through our servers, because we don't have any!</span>
         </div>
         <div class="text-[10px] font-mono text-emerald-600 shrink-0 bg-white/60 px-2 py-0.5 rounded border border-emerald-100">
             HTTPS Client-Direct Connection
@@ -198,7 +198,6 @@
             return cleanStr;
         }
 
-        // Feature: Dual Memory Scope State Loader Engine (Session by Default, Local via Opt-In Check)
         function loadTokenState() {
             const isPersistent = localStorage.getItem('universal_git_pat_persistent') === 'true';
             document.getElementById('rememberMeCheck').checked = isPersistent;
@@ -244,7 +243,6 @@
             }
         }
 
-        // Feature: Explicit One-Click Token Purge Controller Block
         function clearToken() {
             document.getElementById('tokenInput').value = "";
             document.getElementById('clearTokenBtn').classList.add('hidden');
@@ -343,7 +341,6 @@
         }
 
         async function fetchGitHubData(endpoint) {
-            // Read active token array parameters straight out of session container vault
             const token = sessionStorage.getItem('universal_git_pat') || document.getElementById('tokenInput').value.trim();
             const headers = { "Accept": "application/vnd.github.v3+json" };
             if (token) headers["Authorization"] = `token ${token}`;
@@ -358,14 +355,13 @@
                 document.getElementById('apiTracker').innerText = `API Limits: ${rateLimit}/${rateLimitLimit}`;
             }
 
-            // Adaptive Error Boundaries: Trigger alert prompt inputs ONLY if unauthenticated rates clip or hit 403 blocks
             if (response.status === 403 || response.status === 401) {
                 const patVal = prompt("GitHub API Rate Limit Reached (or accessing private repository scope parameters).\nPlease enter a read-only Personal Access Token (PAT) to continue processing raw paths:");
                 if (patVal) {
                     document.getElementById('tokenInput').value = patVal;
                     sessionStorage.setItem('universal_git_pat', patVal);
                     document.getElementById('clearTokenBtn').classList.remove('hidden');
-                    return await fetchGitHubData(endpoint); // Re-fire request loop with fresh credentials
+                    return await fetchGitHubData(endpoint);
                 }
             }
 
@@ -583,7 +579,6 @@
                     cleanMarkdown = cleanMarkdown.replace(/\\u([0-9a-fA-F]{4})/g, (match, grp) => String.fromCharCode(parseInt(grp, 16)));
                     cleanMarkdown = cleanMarkdown.replace(/^---[\s\S]*?---\s*/m, '');
                     
-                    // Feature: Strict client-side XSS Sanitization utilizing DOMPurify on Markdown inputs
                     const dirtyHtml = marked.parse(cleanMarkdown);
                     renderBox.innerHTML = DOMPurify.sanitize(dirtyHtml);
                 } else {
@@ -595,6 +590,25 @@
             } catch (e) {
                 renderBox.innerHTML = `<span class="text-rose-600 font-medium font-mono text-xs">Failed to stream file data vectors.</span>`;
             }
+        }
+
+        // Feature: Native Client Clipboard Integration Framework
+        function executeTextCopy(textToCopy, elementId) {
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                const copyBtn = document.getElementById(elementId);
+                const originalHtml = copyBtn.innerHTML;
+                copyBtn.innerHTML = "✓ Copied!";
+                copyBtn.classList.remove('text-gray-400', 'hover:text-white');
+                copyBtn.classList.add('text-emerald-400');
+                
+                setTimeout(() => {
+                    copyBtn.innerHTML = originalHtml;
+                    copyBtn.classList.remove('text-emerald-400');
+                    copyBtn.classList.add('text-gray-400', 'hover:text-white');
+                }, 2000);
+            }).catch(err => {
+                console.error("Clipboard write error:", err);
+            });
         }
 
         function renderCompositeSidebarWidgets(node, rawText) {
@@ -614,14 +628,16 @@
 
             if (activeSignatures.AGENTFORCE_SKILLS && lowerPath.startsWith('skills/')) {
                 const skillId = node.path.split('/')[1] || "target-skill";
+                const cmdStr = `npx skills add ${currentOwnerRepo}/skills/${skillId}`;
                 compositeHtml += `
                     <div class="bg-slate-900 border border-emerald-800 rounded-lg p-3.5 shadow-md flex flex-col">
                         <span class="text-[9px] font-bold tracking-widest text-emerald-400 uppercase mb-2 block">Agentforce Skill Registry Hook</span>
-                        <div class="flex items-center justify-between bg-black text-gray-300 font-mono text-[11px] p-2.5 rounded border border-gray-800 shadow-inner">
-                            <div class="flex items-center space-x-1.5 truncate">
+                        <div class="flex items-center justify-between bg-black text-gray-300 font-mono text-[11px] p-2.5 rounded border border-gray-800 shadow-inner relative group">
+                            <div class="flex items-center space-x-1.5 truncate pr-8">
                                 <span class="text-emerald-500 font-bold select-none">$</span>
-                                <span class="truncate font-medium text-gray-100">npx skills add ${currentOwnerRepo}/skills/${skillId}</span>
+                                <span class="truncate font-medium text-gray-100">${cmdStr}</span>
                             </div>
+                            <button id="copyBtn_agentforce" onclick="executeTextCopy('${cmdStr}', 'copyBtn_agentforce')" class="absolute right-2 top-2.5 text-gray-400 hover:text-white transition-colors text-[10px] font-sans" title="Copy command">📋 Copy</button>
                         </div>
                         <p class="text-[10px] text-gray-400 mt-2 leading-relaxed">Inject this localized target capability node package down into active Salesforce dynamic runtime agents.</p>
                     </div>
@@ -629,14 +645,16 @@
             }
 
             if (activeSignatures.SALESFORCE_DX) {
+                const cmdStr = `sf project deploy start --manifest manifest/package.xml`;
                 compositeHtml += `
                     <div class="bg-slate-900 border border-sky-800 rounded-lg p-3.5 shadow-md flex flex-col">
                         <span class="text-[9px] font-bold tracking-widest text-sky-400 uppercase mb-2 block">Salesforce DX CLI Deploy Engine</span>
-                        <div class="flex items-center justify-between bg-black text-gray-300 font-mono text-[11px] p-2.5 rounded border border-gray-800 shadow-inner">
-                            <div class="flex items-center space-x-1.5 truncate">
+                        <div class="flex items-center justify-between bg-black text-gray-300 font-mono text-[11px] p-2.5 rounded border border-gray-800 shadow-inner relative group">
+                            <div class="flex items-center space-x-1.5 truncate pr-8">
                                 <span class="text-sky-500 font-bold select-none">$</span>
-                                <span class="truncate font-medium text-gray-100">sf project deploy start --manifest manifest/package.xml</span>
+                                <span class="truncate font-medium text-gray-100">${cmdStr}</span>
                             </div>
+                            <button id="copyBtn_sfdx" onclick="executeTextCopy('${cmdStr}', 'copyBtn_sfdx')" class="absolute right-2 top-2.5 text-gray-400 hover:text-white transition-colors text-[10px] font-sans" title="Copy command">📋 Copy</button>
                         </div>
                         <p class="text-[10px] text-gray-400 mt-2 leading-relaxed">Push local source changes or metadata elements up into assigned scratch orgs or sandbox containers.</p>
                     </div>
@@ -644,21 +662,22 @@
             }
 
             if (activeSignatures.GENERIC || (!activeSignatures.AGENTFORCE_SKILLS && !activeSignatures.SALESFORCE_DX)) {
+                const cmdStr = `git clone https://github.com/${currentOwnerRepo}.git`;
                 compositeHtml += `
                     <div class="bg-slate-900 border border-gray-800 rounded-lg p-3.5 shadow-md flex flex-col">
                         <span class="text-[9px] font-bold tracking-widest text-indigo-400 uppercase mb-2 block">Git Repository Clone Target</span>
-                        <div class="flex items-center justify-between bg-black text-gray-300 font-mono text-[11px] p-2.5 rounded border border-gray-800 shadow-inner">
-                            <div class="flex items-center space-x-1.5 truncate">
+                        <div class="flex items-center justify-between bg-black text-gray-300 font-mono text-[11px] p-2.5 rounded border border-gray-800 shadow-inner relative group">
+                            <div class="flex items-center space-x-1.5 truncate pr-8">
                                 <span class="text-indigo-400 font-bold select-none">$</span>
-                                <span class="truncate font-medium text-gray-100">git clone https://github.com/${currentOwnerRepo}.git</span>
+                                <span class="truncate font-medium text-gray-100">${cmdStr}</span>
                             </div>
+                            <button id="copyBtn_generic" onclick="executeTextCopy('${cmdStr}', 'copyBtn_generic')" class="absolute right-2 top-2.5 text-gray-400 hover:text-white transition-colors text-[10px] font-sans" title="Copy command">📋 Copy</button>
                         </div>
                         <p class="text-[10px] text-gray-400 mt-2 leading-relaxed">Clone this entire open-source repository context framework structure down into a local terminal shell.</p>
                     </div>
                 `;
             }
 
-            // Sanitize standard custom metrics container loops safely via DOMPurify boundaries
             stackContainer.innerHTML = DOMPurify.sanitize(compositeHtml);
         }
 
