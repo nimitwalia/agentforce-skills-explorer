@@ -592,25 +592,24 @@
             }
         }
 
-        // Feature: Native Client Clipboard Integration Framework
-        function executeTextCopy(textToCopy, elementId) {
-            navigator.clipboard.writeText(textToCopy).then(() => {
-                const copyBtn = document.getElementById(elementId);
-                const originalHtml = copyBtn.innerHTML;
-                copyBtn.innerHTML = "✓ Copied!";
-                copyBtn.classList.remove('text-gray-400', 'hover:text-white');
-                copyBtn.classList.add('text-emerald-400');
+        // Centralized Event Delegation framework handles text copies cleanly outside the HTML string injection template
+        function triggerActionCopy(btnElement) {
+            const targetString = btnElement.getAttribute('data-command');
+            navigator.clipboard.writeText(targetString).then(() => {
+                const originalText = btnElement.innerHTML;
+                btnElement.innerHTML = "✓ Copied!";
+                btnElement.classList.remove('text-gray-400', 'hover:text-white');
+                btnElement.classList.add('text-emerald-400');
                 
                 setTimeout(() => {
-                    copyBtn.innerHTML = originalHtml;
-                    copyBtn.classList.remove('text-emerald-400');
-                    copyBtn.classList.add('text-gray-400', 'hover:text-white');
+                    btnElement.innerHTML = originalText;
+                    btnElement.classList.remove('text-emerald-400');
+                    btnElement.classList.add('text-gray-400', 'hover:text-white');
                 }, 2000);
-            }).catch(err => {
-                console.error("Clipboard write error:", err);
-            });
+            }).catch(e => console.error("Clipboard access denied:", e));
         }
 
+        // FIXED: Swapped out standard event handler strings for native HTML Data-Attributes compatible with DOMPurify sanitization loops
         function renderCompositeSidebarWidgets(node, rawText) {
             const stackContainer = document.getElementById('widgetWorkspaceStack');
             const lowerPath = node.path.toLowerCase();
@@ -637,7 +636,7 @@
                                 <span class="text-emerald-500 font-bold select-none">$</span>
                                 <span class="truncate font-medium text-gray-100">${cmdStr}</span>
                             </div>
-                            <button id="copyBtn_agentforce" onclick="executeTextCopy('${cmdStr}', 'copyBtn_agentforce')" class="absolute right-2 top-2.5 text-gray-400 hover:text-white transition-colors text-[10px] font-sans" title="Copy command">📋 Copy</button>
+                            <button onclick="triggerActionCopy(this)" data-command="${cmdStr}" class="absolute right-2 top-2.5 text-gray-400 hover:text-white transition-colors text-[10px] font-sans" title="Copy command">📋 Copy</button>
                         </div>
                         <p class="text-[10px] text-gray-400 mt-2 leading-relaxed">Inject this localized target capability node package down into active Salesforce dynamic runtime agents.</p>
                     </div>
@@ -654,7 +653,7 @@
                                 <span class="text-sky-500 font-bold select-none">$</span>
                                 <span class="truncate font-medium text-gray-100">${cmdStr}</span>
                             </div>
-                            <button id="copyBtn_sfdx" onclick="executeTextCopy('${cmdStr}', 'copyBtn_sfdx')" class="absolute right-2 top-2.5 text-gray-400 hover:text-white transition-colors text-[10px] font-sans" title="Copy command">📋 Copy</button>
+                            <button onclick="triggerActionCopy(this)" data-command="${cmdStr}" class="absolute right-2 top-2.5 text-gray-400 hover:text-white transition-colors text-[10px] font-sans" title="Copy command">📋 Copy</button>
                         </div>
                         <p class="text-[10px] text-gray-400 mt-2 leading-relaxed">Push local source changes or metadata elements up into assigned scratch orgs or sandbox containers.</p>
                     </div>
@@ -671,7 +670,7 @@
                                 <span class="text-indigo-400 font-bold select-none">$</span>
                                 <span class="truncate font-medium text-gray-100">${cmdStr}</span>
                             </div>
-                            <button id="copyBtn_generic" onclick="executeTextCopy('${cmdStr}', 'copyBtn_generic')" class="absolute right-2 top-2.5 text-gray-400 hover:text-white transition-colors text-[10px] font-sans" title="Copy command">📋 Copy</button>
+                            <button onclick="triggerActionCopy(this)" data-command="${cmdStr}" class="absolute right-2 top-2.5 text-gray-400 hover:text-white transition-colors text-[10px] font-sans" title="Copy command">📋 Copy</button>
                         </div>
                         <p class="text-[10px] text-gray-400 mt-2 leading-relaxed">Clone this entire open-source repository context framework structure down into a local terminal shell.</p>
                     </div>
