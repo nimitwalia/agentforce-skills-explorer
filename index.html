@@ -106,7 +106,7 @@
                 </div>
                 <div class="border-l border-gray-800 pl-3">
                     <p class="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Polling Engine</p>
-                    <div class="flex items-center space-x-1 mt-1">
+                    <div class="flex items-center space-x-1.5 mt-1">
                         <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                         <span class="text-xs font-semibold text-gray-200">Live CDN Fetch</span>
                     </div>
@@ -592,24 +592,28 @@
             }
         }
 
-        // Centralized Event Delegation framework handles text copies cleanly outside the HTML string injection template
+        // Centralized Event Delegation framework handles text copies with structured feedback blocks safely
         function triggerActionCopy(btnElement) {
             const targetString = btnElement.getAttribute('data-command');
             navigator.clipboard.writeText(targetString).then(() => {
-                const originalText = btnElement.innerHTML;
-                btnElement.innerHTML = "✓ Copied!";
-                btnElement.classList.remove('text-gray-400', 'hover:text-white');
-                btnElement.classList.add('text-emerald-400');
+                const textNode = btnElement.querySelector('.copy-status-text');
+                const iconNode = btnElement.querySelector('.copy-status-icon');
+                
+                textNode.innerHTML = "Copied to clipboard!";
+                btnElement.classList.remove('bg-slate-800', 'text-gray-400', 'hover:text-white', 'hover:bg-slate-700');
+                btnElement.classList.add('bg-emerald-950', 'text-emerald-400', 'border-emerald-800');
+                if (iconNode) iconNode.innerHTML = "✓";
                 
                 setTimeout(() => {
-                    btnElement.innerHTML = originalText;
-                    btnElement.classList.remove('text-emerald-400');
-                    btnElement.classList.add('text-gray-400', 'hover:text-white');
+                    textNode.innerHTML = "Copy";
+                    btnElement.classList.remove('bg-emerald-950', 'text-emerald-400', 'border-emerald-800');
+                    btnElement.classList.add('bg-slate-800', 'text-gray-400', 'hover:text-white', 'hover:bg-slate-700');
+                    if (iconNode) iconNode.innerHTML = "📋";
                 }, 2000);
             }).catch(e => console.error("Clipboard access denied:", e));
         }
 
-        // FIXED: Swapped out standard event handler strings for native HTML Data-Attributes compatible with DOMPurify sanitization loops
+        // FIXED: Rebuilt terminal cards to prevent layout compression and isolation bugs
         function renderCompositeSidebarWidgets(node, rawText) {
             const stackContainer = document.getElementById('widgetWorkspaceStack');
             const lowerPath = node.path.toLowerCase();
@@ -629,16 +633,16 @@
                 const skillId = node.path.split('/')[1] || "target-skill";
                 const cmdStr = `npx skills add ${currentOwnerRepo}/skills/${skillId}`;
                 compositeHtml += `
-                    <div class="bg-slate-900 border border-emerald-800 rounded-lg p-3.5 shadow-md flex flex-col">
-                        <span class="text-[9px] font-bold tracking-widest text-emerald-400 uppercase mb-2 block">Agentforce Skill Registry Hook</span>
-                        <div class="flex items-center justify-between bg-black text-gray-300 font-mono text-[11px] p-2.5 rounded border border-gray-800 shadow-inner relative group">
-                            <div class="flex items-center space-x-1.5 truncate pr-8">
-                                <span class="text-emerald-500 font-bold select-none">$</span>
-                                <span class="truncate font-medium text-gray-100">${cmdStr}</span>
-                            </div>
-                            <button onclick="triggerActionCopy(this)" data-command="${cmdStr}" class="absolute right-2 top-2.5 text-gray-400 hover:text-white transition-colors text-[10px] font-sans" title="Copy command">📋 Copy</button>
+                    <div class="bg-slate-900 border border-emerald-800 rounded-lg p-3.5 shadow-md flex flex-col space-y-2">
+                        <span class="text-[9px] font-bold tracking-widest text-emerald-400 uppercase block">Agentforce Skill Registry Hook</span>
+                        <div class="bg-black text-gray-300 font-mono text-xs p-3 rounded border border-gray-800 shadow-inner overflow-x-auto whitespace-pre font-medium text-gray-100">
+                            <span class="text-emerald-500 font-bold select-none">$</span> ${cmdStr}
                         </div>
-                        <p class="text-[10px] text-gray-400 mt-2 leading-relaxed">Inject this localized target capability node package down into active Salesforce dynamic runtime agents.</p>
+                        <button onclick="triggerActionCopy(this)" data-command="${cmdStr}" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-gray-400 hover:text-white font-medium text-xs py-1.5 px-3 rounded flex items-center justify-center space-x-1.5 transition-all select-none shadow-sm">
+                            <span class="copy-status-icon">📋</span>
+                            <span class="copy-status-text">Copy</span>
+                        </button>
+                        <p class="text-[10px] text-gray-400 leading-relaxed pt-1">Inject this localized target capability node package down into active Salesforce dynamic runtime agents.</p>
                     </div>
                 `;
             }
@@ -646,16 +650,16 @@
             if (activeSignatures.SALESFORCE_DX) {
                 const cmdStr = `sf project deploy start --manifest manifest/package.xml`;
                 compositeHtml += `
-                    <div class="bg-slate-900 border border-sky-800 rounded-lg p-3.5 shadow-md flex flex-col">
-                        <span class="text-[9px] font-bold tracking-widest text-sky-400 uppercase mb-2 block">Salesforce DX CLI Deploy Engine</span>
-                        <div class="flex items-center justify-between bg-black text-gray-300 font-mono text-[11px] p-2.5 rounded border border-gray-800 shadow-inner relative group">
-                            <div class="flex items-center space-x-1.5 truncate pr-8">
-                                <span class="text-sky-500 font-bold select-none">$</span>
-                                <span class="truncate font-medium text-gray-100">${cmdStr}</span>
-                            </div>
-                            <button onclick="triggerActionCopy(this)" data-command="${cmdStr}" class="absolute right-2 top-2.5 text-gray-400 hover:text-white transition-colors text-[10px] font-sans" title="Copy command">📋 Copy</button>
+                    <div class="bg-slate-900 border border-sky-800 rounded-lg p-3.5 shadow-md flex flex-col space-y-2">
+                        <span class="text-[9px] font-bold tracking-widest text-sky-400 uppercase block">Salesforce DX CLI Deploy Engine</span>
+                        <div class="bg-black text-gray-300 font-mono text-xs p-3 rounded border border-gray-800 shadow-inner overflow-x-auto whitespace-pre font-medium text-gray-100">
+                            <span class="text-sky-500 font-bold select-none">$</span> ${cmdStr}
                         </div>
-                        <p class="text-[10px] text-gray-400 mt-2 leading-relaxed">Push local source changes or metadata elements up into assigned scratch orgs or sandbox containers.</p>
+                        <button onclick="triggerActionCopy(this)" data-command="${cmdStr}" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-gray-400 hover:text-white font-medium text-xs py-1.5 px-3 rounded flex items-center justify-center space-x-1.5 transition-all select-none shadow-sm">
+                            <span class="copy-status-icon">📋</span>
+                            <span class="copy-status-text">Copy</span>
+                        </button>
+                        <p class="text-[10px] text-gray-400 leading-relaxed pt-1">Push local source changes or metadata elements up into assigned scratch orgs or sandbox containers.</p>
                     </div>
                 `;
             }
@@ -663,16 +667,16 @@
             if (activeSignatures.GENERIC || (!activeSignatures.AGENTFORCE_SKILLS && !activeSignatures.SALESFORCE_DX)) {
                 const cmdStr = `git clone https://github.com/${currentOwnerRepo}.git`;
                 compositeHtml += `
-                    <div class="bg-slate-900 border border-gray-800 rounded-lg p-3.5 shadow-md flex flex-col">
-                        <span class="text-[9px] font-bold tracking-widest text-indigo-400 uppercase mb-2 block">Git Repository Clone Target</span>
-                        <div class="flex items-center justify-between bg-black text-gray-300 font-mono text-[11px] p-2.5 rounded border border-gray-800 shadow-inner relative group">
-                            <div class="flex items-center space-x-1.5 truncate pr-8">
-                                <span class="text-indigo-400 font-bold select-none">$</span>
-                                <span class="truncate font-medium text-gray-100">${cmdStr}</span>
-                            </div>
-                            <button onclick="triggerActionCopy(this)" data-command="${cmdStr}" class="absolute right-2 top-2.5 text-gray-400 hover:text-white transition-colors text-[10px] font-sans" title="Copy command">📋 Copy</button>
+                    <div class="bg-slate-900 border border-gray-800 rounded-lg p-3.5 shadow-md flex flex-col space-y-2">
+                        <span class="text-[9px] font-bold tracking-widest text-indigo-400 uppercase block">Git Repository Clone Target</span>
+                        <div class="bg-black text-gray-300 font-mono text-xs p-3 rounded border border-gray-800 shadow-inner overflow-x-auto whitespace-pre font-medium text-gray-100">
+                            <span class="text-indigo-400 font-bold select-none">$</span> ${cmdStr}
                         </div>
-                        <p class="text-[10px] text-gray-400 mt-2 leading-relaxed">Clone this entire open-source repository context framework structure down into a local terminal shell.</p>
+                        <button onclick="triggerActionCopy(this)" data-command="${cmdStr}" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-gray-400 hover:text-white font-medium text-xs py-1.5 px-3 rounded flex items-center justify-center space-x-1.5 transition-all select-none shadow-sm">
+                            <span class="copy-status-icon">📋</span>
+                            <span class="copy-status-text">Copy</span>
+                        </button>
+                        <p class="text-[10px] text-gray-400 leading-relaxed pt-1">Clone this entire open-source repository context framework structure down into a local terminal shell.</p>
                     </div>
                 `;
             }
