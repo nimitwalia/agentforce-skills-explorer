@@ -4,20 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Universal Git Visualiser & Setup Studio</title>
-    <!-- Tailwind CSS Engine -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Marked.js for markdown parsing -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <!-- DOMPurify for client-side XSS sanitization -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js"></script>
     
-    <!-- 📊 GoatCounter Privacy-Respecting Analytics Endpoint -->
     <script data-goatcounter="https://nimitwalia.goatcounter.com/count" 
             async src="//gc.zgo.at/count.js"></script>
 
     <style>
         .prose code { background: #f1f5f9; padding: 0.15rem 0.35rem; border-radius: 0.25rem; font-size: 0.85em; color: #0f172a; font-family: monospace; }
-        /* FIXED: Removed per-line selection/white background highlights completely from code view containers */
         .prose pre { background: #0f172a; color: #e2e8f0; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin: 1.25rem 0; font-size: 0.875rem; font-family: monospace; line-height: 1.6; }
         .prose pre code { background: transparent; padding: 0; border-radius: 0; color: inherit; font-size: inherit; font-family: inherit; }
         .prose h1, .prose h2, .prose h3 { font-weight: 750; color: #0f172a; margin-top: 1.75rem; margin-bottom: 0.5rem; tracking: -0.025em; }
@@ -28,7 +23,6 @@
         .prose ul, .prose ol { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1rem; font-size: 0.95rem; color: #334155; }
         .prose strong { color: #0f172a; font-weight: 600; }
         
-        /* Tooltip style anchor rules */
         .tooltip-container { position: relative; display: inline-flex; items-center: center; cursor: help; }
         .tooltip-text { visibility: hidden; width: 220px; background-color: #0f172a; color: #fff; text-align: center; border-radius: 6px; padding: 6px 10px; position: absolute; z-index: 100; bottom: 125%; left: 50%; margin-left: -110px; opacity: 0; transition: opacity 0.2s; font-family: sans-serif; font-size: 11px; line-height: 1.4; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
         .tooltip-container:hover .tooltip-text { visibility: visible; opacity: 1; }
@@ -36,7 +30,6 @@
 </head>
 <body class="bg-[#f3f4f6] text-[#181818] font-sans min-h-screen flex flex-col antialiased relative">
 
-    <!-- Global Header -->
     <header class="bg-[#1b253a] text-white border-b border-[#0f172a] sticky top-0 z-50 shadow-md px-4 py-3 h-[60px] flex items-center shrink-0">
         <div class="max-w-[1600px] w-full mx-auto flex items-center justify-between gap-4">
             
@@ -49,7 +42,6 @@
                 </div>
             </div>
 
-            <!-- Global Live API Controls -->
             <div class="flex items-center gap-2 lg:justify-end flex-1 max-w-2xl">
                 <div class="relative flex items-center bg-slate-800 rounded border border-slate-700 flex-1">
                     <input type="text" id="repoInput" value="" onkeydown="handleRepoFieldKeyDown(event)" placeholder="Enter owner/repository or GitHub URL" 
@@ -80,18 +72,15 @@
         </div>
     </header>
 
-    <!-- 🛡️ Privacy Banner with Session Collapse Logic -->
     <div id="privacyBanner" class="bg-emerald-50 border-b border-emerald-100 px-4 py-1.5 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-emerald-800 shadow-inner shrink-0 transition-all duration-200">
         <div class="flex items-center space-x-1.5 font-medium">
             <span>🛡️</span>
-            <span id="privacyBannerText"><strong>Privacy:</strong> Runs entirely in your browser. Your token and requests go directly to GitHub's API and never through our servers, because we don't have any!</span>
+            <span id="privacyBannerText"><strong>Privacy:</strong> Runs entirely in your browser. Your token and requests go directly to GitHub's API — never through our servers, because we don't have any!</span>
         </div>
         <button onclick="collapsePrivacyBanner()" class="text-emerald-600 hover:text-emerald-900 font-bold px-1.5 py-0.2 rounded hover:bg-emerald-100/60 transition-all" title="Collapse Banner">✕</button>
     </div>
 
-    <!-- 📋 FIXED: Comprehensive Ribbon Restructure into strict type-scale rows -->
     <div class="bg-white border-b border-gray-200 px-4 py-2.5 flex flex-col gap-2.5 shadow-sm shrink-0 select-none">
-        <!-- Row 1: Identity & Profile Context Markers -->
         <div class="flex flex-wrap items-center gap-3">
             <span class="text-base font-bold tracking-tight text-gray-800">Target Repo: <span id="currentRepoLabel" class="text-gray-900 font-mono font-black">None</span></span>
             
@@ -105,7 +94,6 @@
             </div>
         </div>
         
-        <!-- Row 2: Secondary Row Actions/Status -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t border-gray-100 pt-2 text-[11px] text-gray-500">
             <div class="flex flex-wrap items-center gap-3">
                 <span id="shareContainer" class="hidden">
@@ -115,19 +103,15 @@
                 <div id="recentDeckContainer" class="flex flex-wrap items-center gap-1.5 font-mono"></div>
             </div>
 
-            <!-- Compact Dynamic Rate Limit Pill Box -->
             <div id="apiPillBox" class="bg-gray-100 text-gray-600 px-2.5 py-0.5 rounded-full font-mono font-medium shadow-sm border border-gray-200 transition-colors">
                 API status check standby
             </div>
         </div>
     </div>
 
-    <!-- Main Grid Workspace -->
     <main class="max-w-[1600px] w-full mx-auto p-4 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch overflow-hidden">
         
-        <!-- Sidebar Navigation -->
         <section class="lg:col-span-3 flex flex-col space-y-3 min-h-0">
-            <!-- FIXED: Merged files index title and search filters to clear vertical column space -->
             <div class="bg-white p-3 rounded-lg border border-gray-200 shadow-sm space-y-2.5 shrink-0">
                 <div class="flex items-center justify-between text-[11px] border-b border-gray-100 pb-1.5">
                     <span class="font-bold text-gray-400 uppercase tracking-wider">Bookmarked Repositories</span>
@@ -142,7 +126,6 @@
                 </div>
             </div>
 
-            <!-- Explorer Tree List Container -->
             <div class="bg-white rounded-lg border border-gray-200 shadow-sm flex-1 flex flex-col overflow-hidden min-h-[300px]">
                 <div class="px-3 py-2 bg-gray-50 border-b border-gray-200 flex justify-between items-center shrink-0 text-[11px] font-bold tracking-wider text-gray-500">
                     <span>Files Indexed / <span id="itemCountBadge" class="text-indigo-600 font-mono font-black">0</span></span>
@@ -153,7 +136,6 @@
             </div>
         </section>
 
-        <!-- Main Detail Workspace Area -->
         <section class="lg:col-span-9 flex flex-col min-h-0">
             <div id="welcomeState" class="bg-white border border-gray-200 rounded-lg p-16 text-center my-auto shadow-sm flex flex-col items-center justify-center flex-1">
                 <div class="w-12 h-12 bg-indigo-50 text-indigo-600 border border-indigo-200 rounded-lg flex items-center justify-center font-bold text-lg mb-3 shadow-sm select-none">🎛️</div>
@@ -172,27 +154,22 @@
                 </div>
 
                 <div class="p-5 overflow-y-auto flex-1 grid grid-cols-1 xl:grid-cols-12 gap-5 bg-gray-50/50 min-h-0">
-                    <!-- Preview Canvas -->
                     <div class="xl:col-span-8 bg-white p-6 rounded-lg border border-gray-200 shadow-sm flex flex-col max-w-full overflow-hidden min-h-0">
                         <div class="overflow-y-auto flex-1 prose max-w-none text-xs min-h-0" id="markdownContainer"></div>
                     </div>
 
-                    <!-- Actions Card stack column -->
                     <div class="xl:col-span-4 space-y-4 flex flex-col overflow-y-auto min-h-0" id="widgetWorkspaceStack"></div>
                 </div>
             </div>
         </section>
     </main>
 
-    <!-- TOAST Notification Banners -->
     <div id="toastNotification" class="fixed bottom-5 right-5 bg-slate-900 text-white text-xs font-medium py-2.5 px-4 rounded-lg shadow-xl border border-slate-700 flex items-center space-x-2 translate-y-20 opacity-0 pointer-events-none transition-all duration-300 z-50">
         <span class="text-emerald-400 font-bold">✓</span>
         <span id="toastMessage">Command copied to clipboard!</span>
     </div>
 
-    <!-- Modals Layout Frame Layer Overlays -->
     <div id="customModalOverlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <!-- Auth prompt -->
         <div id="authPromptContainer" class="hidden bg-white rounded-xl shadow-2xl border border-gray-200 max-w-md w-full overflow-hidden transform scale-95 transition-all p-5 space-y-4">
             <h3 class="text-sm font-bold text-slate-900 flex items-center space-x-2">
                 <span>🔑</span> <span>GitHub Authentication Requested</span>
@@ -209,7 +186,6 @@
             </div>
         </div>
 
-        <!-- Wipe verification box -->
         <div id="purgeConfirmContainer" class="hidden bg-white rounded-xl shadow-2xl border border-gray-200 max-w-sm w-full overflow-hidden transform scale-95 transition-all p-5 space-y-4">
             <h3 class="text-sm font-bold text-rose-700 flex items-center space-x-2">
                 <span>⚠️</span> <span>Purge Saved Credentials?</span>
@@ -389,7 +365,6 @@
                 container.innerHTML = "";
                 return;
             }
-            // FIXED: Added native title tags showing full name values on element hover cards
             container.innerHTML = `<span class="text-gray-500 font-sans">Recent:</span>` + recents.map(r => `
                 <button onclick="quickLoadRepo('${r}')" title="${r}" class="bg-slate-100 hover:bg-indigo-50 border border-gray-200 text-gray-600 hover:text-indigo-600 px-2 py-0.5 rounded text-[10px] font-bold transition-all truncate max-w-[150px]">${r.split('/')[1]}</button>
             `).join('');
@@ -480,13 +455,12 @@
             document.getElementById('activeFilePath').innerText = "Path";
         }
 
-        // 🛡️ Manage localized runtime collapse flags on active session storage caches
         function initPrivacyBannerTracking() {
             const bannerState = sessionStorage.getItem('privacy_banner_collapsed');
             if(bannerState === 'true') {
                 const banner = document.getElementById('privacyBanner');
                 banner.className = "bg-emerald-50 border-b border-emerald-100 px-4 py-0.5 flex flex-col sm:flex-row items-center justify-between gap-2 text-[10px] text-emerald-800 shadow-inner shrink-0";
-                document.getElementById('privacyBannerText').innerHTML = "🛡️ <strong>Privacy:</strong> Client-Direct Sandbox Engine Engaged.";
+                document.getElementById('privacyBannerText').innerHTML = "<strong>Privacy:</strong> Runs entirely in your browser. Your token and requests go directly to GitHub's API — never through our servers, because we don't have any!";
             }
         }
 
@@ -494,10 +468,10 @@
             sessionStorage.setItem('privacy_banner_collapsed', 'true');
             const banner = document.getElementById('privacyBanner');
             banner.className = "bg-emerald-50 border-b border-emerald-100 px-4 py-0.5 flex flex-col sm:flex-row items-center justify-between gap-2 text-[10px] text-emerald-800 shadow-inner shrink-0";
-            document.getElementById('privacyBannerText').innerHTML = "🛡️ <strong>Privacy:</strong> Client-Direct Sandbox Engine Engaged.";
+            document.getElementById('privacyBannerText').innerHTML = "<strong>Privacy:</strong> Runs entirely in your browser. Your token and requests go directly to GitHub's API — never through our servers, because we don't have any!";
         }
 
-        // Parse remaining rate targets dynamically against epoch unix timestamps
+        // FIXED: Streamlined amber text branch string layout variables to maintain uniform syntax continuity
         function handleUpdateRateLimitPill(remaining, total, resetEpoch) {
             const pillBox = document.getElementById('apiPillBox');
             if(!resetEpoch) {
@@ -507,10 +481,9 @@
             
             const minutesLeft = Math.max(0, Math.ceil((new Date(resetEpoch * 1000) - new Date()) / 1000 / 60));
             
-            // Apply conditional amber flags underneath low threshold lines (< 10 left)
             if(parseInt(remaining) < 10) {
                 pillBox.className = "bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded-full font-mono font-medium shadow-sm border border-amber-200 animate-pulse";
-                pillBox.innerText = `${remaining}/${total} requests · resets in ${minutesLeft} min · low limit hint: add token for 5,000/hr`;
+                pillBox.innerText = `${remaining}/${total} requests · resets in ${minutesLeft} min`;
             } else {
                 pillBox.className = "bg-gray-100 text-gray-600 px-2.5 py-0.5 rounded-full font-mono font-medium shadow-sm border border-gray-200";
                 pillBox.innerText = `${remaining}/${total} requests · resets in ${minutesLeft} min`;
@@ -566,7 +539,6 @@
                 return;
             }
 
-            // Collapse privacy panel space cleanly on initial user runtime captures
             collapsePrivacyBanner();
 
             resetCodePreviewWorkspaceState();
@@ -625,7 +597,6 @@
             }
         }
 
-        // FIXED: Applied custom text alignments to match modern clean sentence-cased tracker badges
         function detectManifestSignaturesFromTree(treeNodes) {
             const paths = treeNodes.map(n => n.path.toLowerCase());
             const badgeContainer = document.getElementById('badgeContainer');
@@ -824,7 +795,7 @@
             }, 2500);
         }
 
-        // FIXED: Optimized text mapping rules inside clean utility boxes to strip out redundant data values
+        // FIXED: Remapped caption strings and labels to track deployment actions to sandbox layers
         function renderCompositeSidebarWidgets(node, rawText) {
             const stackContainer = document.getElementById('widgetWorkspaceStack');
             const lowerPath = node.path.toLowerCase();
@@ -869,7 +840,7 @@
                             <span>📋</span>
                             <span>Copy Command</span>
                         </button>
-                        <p class="text-[10px] text-gray-400 leading-relaxed pt-1">Push local source changes or metadata elements up into assigned scratch orgs or sandbox containers.</p>
+                        <p class="text-[10px] text-gray-400 leading-relaxed pt-1">Push your local changes to a scratch org or sandbox.</p>
                     </div>
                 `;
             }
