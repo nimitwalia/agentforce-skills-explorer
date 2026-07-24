@@ -26,8 +26,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Phase 4 (Security & In-Session Search):**
   - Pre-execution supply-chain security linter flagging lifecycle scripts, pipe-to-shell patterns, unpinned dependency versions, and non-standard registry URLs.
   - Scoped in-session content search across opened files with instant match navigation.
+- **Phase 5 (Version Comparison & Diff Viewer) [NEW]:**
+  - Client-side Myers Diff comparison engine comparing active file previews against historical GitHub commits.
+  - Side-by-Side (Split) and Unified diff views with responsive rendering.
+  - Dynamic full-width compare canvas mode: Automatically collapses the right actions column on entering compare mode to maximize horizontal space.
+  - Inline text word-wrapping (`whitespace-pre-wrap break-all`) to prevent horizontal scrollbars.
+  - Sequential contiguous change block pairing in Split view for cleaner side-by-side line alignment.
+  - Floating settings bar (`sticky top-[60px]`) containing view settings, Next/Prev navigation buttons, and boundary locking indicators that remain stationary during page scroll.
 
 ### Fixed
 - Fixed race condition in `processLineFragmentSelection` where line highlights were cleared on re-render.
 - Fixed single-script truncation in `package.json` output to surface all available project scripts.
 - Fixed in-session search to auto-open and navigate to matching file previews on search execution.
+- Fixed compare navigation page-scroll calculations to eliminate target overshooting.
+- Fixed diff text contrast against dark editor background by introducing default `text-slate-100` and removed `text-yellow-100` styles.
+- Fixed GitHub Actions deployment timeouts by introducing a `.nojekyll` bypass file to the staging repository root.
