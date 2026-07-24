@@ -272,6 +272,12 @@
                             <span>📄</span>
                             <span>Copy Raw</span>
                         </button>
+
+                        <!-- Version Compare Button -->
+                        <button id="compareVersionBtn" onclick="toggleCompareMode()" class="bg-white hover:bg-gray-100 border border-gray-300 text-gray-700 px-2.5 py-1 rounded text-xs font-medium transition-all shadow-sm flex items-center gap-1.5 shrink-0">
+                            <span>🔄</span>
+                            <span id="compareBtnText">Compare</span>
+                        </button>
                     </div>
                 </div>
 
@@ -334,6 +340,13 @@
         // 🌟 Interactive Line Selection State
         let activeSelectedLines = new Set();
         let lastClickedLineNum = null;
+
+        // 🌟 Version Comparison / Diff Viewer State
+        let isCompareMode = false;
+        let compareBaseText = "";
+        let compareBaseSha = "";
+        let compareViewType = "unified"; // "unified" or "split"
+        let compareCommitsList = [];
         
         let activeSignatures = {
             AGENTFORCE_SKILLS: false,
@@ -1088,6 +1101,374 @@
             }, 60);
         }
 
+        // 🌟 Pure JS Myers Diff Algorithm with Safety Depth Limit
+        function myersDiff(oldText, newText) {
+            const oldLines = oldText.split('\n');
+            const newLines = newText.split('\n');
+            const N = oldLines.length;
+            const M = newLines.length;
+
+            const maxD = Math.min(500, N + M);
+            const trace = [];
+            const v = { 1: 0 };
+            let found = false;
+
+            for (let d = 0; d <= maxD; d++) {
+                for (let k = -d; k <= d; k += 2) {
+                    let down = (k === -d || (k !== d && (v[k - 1] ?? -1) < (v[k + 1] ?? -1)));
+                    let kPrev = down ? k + 1 : k - 1;
+                    let xStart = v[kPrev] ?? 0;
+                    let yStart = xStart - kPrev;
+
+                    let xEnd = down ? xStart : xStart + 1;
+                    let yEnd = xEnd - k;
+
+                    while (xEnd < N && yEnd < M && oldLines[xEnd] === newLines[yEnd]) {
+                        xEnd++;
+                        yEnd++;
+                    }
+
+                    v[k] = xEnd;
+                    if (xEnd >= N && yEnd >= M) {
+                        found = true;
+                        break;
+                    }
+                }
+                trace.push({ ...v });
+                if (found) break;
+            }
+
+            const diffResult = [];
+            if (!found && maxD < N + M) {
+                // Fallback to simple comparative rendering if too divergent
+                for (let i = 0; i < N; i++) {
+                    diffResult.push({ type: 'removed', oldLine: i + 1, newLine: null, value: oldLines[i] });
+                }
+                for (let j = 0; j < M; j++) {
+                    diffResult.push({ type: 'added', oldLine: null, newLine: j + 1, value: newLines[j] });
+                }
+                return diffResult;
+            }
+
+            const path = [];
+            let k = N - M;
+            for (let d = trace.length - 1; d >= 0; d--) {
+                const vD = trace[d];
+                let down = (k === -d || (k !== d && (vD[k - 1] ?? -Infinity) < (vD[k + 1] ?? -Infinity)));
+                let kPrev = down ? k + 1 : k - 1;
+
+                let xEnd = vD[k];
+                let yEnd = xEnd - k;
+
+                let xStart = vD[kPrev] ?? 0;
+                let yStart = xStart - kPrev;
+
+                let xDiag = down ? xStart : xStart + 1;
+                let yDiag = xDiag - k;
+
+                while (xEnd > xDiag && yEnd > yDiag) {
+                    path.push({ x: xEnd - 1, y: yEnd - 1, type: 'match' });
+                    xEnd--;
+                    yEnd--;
+                }
+
+                if (d > 0) {
+                    if (down) {
+                        path.push({ x: xStart, y: yStart, type: 'add' });
+                    } else {
+                        path.push({ x: xStart, y: yStart, type: 'remove' });
+                    }
+                }
+                k = kPrev;
+            }
+            path.reverse();
+
+            let currX = 0, currY = 0;
+            for (const step of path) {
+                if (step.type === 'match') {
+                    diffResult.push({ type: 'normal', oldLine: currX + 1, newLine: currY + 1, value: oldLines[currX] });
+                    currX++;
+                    currY++;
+                } else if (step.type === 'remove') {
+                    diffResult.push({ type: 'removed', oldLine: currX + 1, newLine: null, value: oldLines[currX] });
+                    currX++;
+                } else if (step.type === 'add') {
+                    diffResult.push({ type: 'added', oldLine: null, newLine: currY + 1, value: newLines[currY] });
+                    currY++;
+                }
+            }
+
+            while (currX < N) {
+                diffResult.push({ type: 'removed', oldLine: currX + 1, newLine: null, value: oldLines[currX] });
+                currX++;
+            }
+            while (currY < M) {
+                diffResult.push({ type: 'added', oldLine: null, newLine: currY + 1, value: newLines[currY] });
+                currY++;
+            }
+
+            return diffResult;
+        }
+
+        // 🌟 Unified Diff Renderer Template
+        function renderUnifiedDiffHtml(diffResult, ext) {
+            const linesHtml = diffResult.map(line => {
+                const tokenized = tokenizeSyntax(line.value, ext);
+                let colorClass = "";
+                let prefix = " ";
+                let oldLineNumStr = line.oldLine !== null ? line.oldLine : "";
+                let newLineNumStr = line.newLine !== null ? line.newLine : "";
+
+                if (line.type === 'removed') {
+                    colorClass = " bg-rose-950/30 text-rose-200 border-l-2 border-rose-600";
+                    prefix = "-";
+                } else if (line.type === 'added') {
+                    colorClass = " bg-emerald-950/30 text-emerald-200 border-l-2 border-emerald-600";
+                    prefix = "+";
+                }
+
+                return `
+                    <div class="flex font-mono text-xs leading-relaxed hover:bg-slate-800/40${colorClass}">
+                        <span class="w-12 text-right text-slate-600 select-none pr-2 border-r border-slate-800">${oldLineNumStr}</span>
+                        <span class="w-12 text-right text-slate-600 select-none pr-2 border-r border-slate-800">${newLineNumStr}</span>
+                        <span class="w-6 text-center select-none text-slate-500 font-bold">${prefix}</span>
+                        <span class="flex-1 px-2 whitespace-pre">${tokenized || ' '}</span>
+                    </div>
+                `;
+            }).join('');
+
+            return `<pre class="bg-slate-900 text-slate-100 p-4 rounded font-mono text-xs overflow-x-auto leading-relaxed border border-slate-800"><code>${linesHtml}</code></pre>`;
+        }
+
+        // 🌟 Split (Side-by-Side) Diff Renderer Template
+        function renderSplitDiffHtml(diffResult, ext) {
+            const rows = [];
+            let i = 0;
+            while (i < diffResult.length) {
+                const item = diffResult[i];
+                if (item.type === 'normal') {
+                    rows.push({ left: item, right: item });
+                    i++;
+                } else if (item.type === 'removed') {
+                    if (i + 1 < diffResult.length && diffResult[i + 1].type === 'added') {
+                        rows.push({ left: item, right: diffResult[i + 1] });
+                        i += 2;
+                    } else {
+                        rows.push({ left: item, right: null });
+                        i++;
+                    }
+                } else if (item.type === 'added') {
+                    rows.push({ left: null, right: item });
+                    i++;
+                }
+            }
+
+            const leftRowsHtml = [];
+            const rightRowsHtml = [];
+
+            rows.forEach((row) => {
+                if (row.left) {
+                    const tokenized = tokenizeSyntax(row.left.value, ext);
+                    const colorClass = row.left.type === 'removed' ? " bg-rose-950/30 text-rose-200 border-l-2 border-rose-600" : "";
+                    const prefix = row.left.type === 'removed' ? "-" : " ";
+                    leftRowsHtml.push(`
+                        <div class="flex font-mono text-xs leading-relaxed hover:bg-slate-800/40${colorClass}">
+                            <span class="w-12 text-right text-slate-600 select-none pr-2 border-r border-slate-800">${row.left.oldLine}</span>
+                            <span class="w-6 text-center select-none text-slate-500 font-bold">${prefix}</span>
+                            <span class="flex-1 px-2 whitespace-pre">${tokenized || ' '}</span>
+                        </div>
+                    `);
+                } else {
+                    leftRowsHtml.push(`
+                        <div class="flex font-mono text-xs leading-relaxed bg-slate-950/40 text-slate-700 select-none border-l-2 border-transparent">
+                            <span class="w-12 text-right text-slate-800 pr-2 border-r border-slate-800"> </span>
+                            <span class="w-6 text-center font-bold"> </span>
+                            <span class="flex-1 px-2">~</span>
+                        </div>
+                    `);
+                }
+
+                if (row.right) {
+                    const tokenized = tokenizeSyntax(row.right.value, ext);
+                    const colorClass = row.right.type === 'added' ? " bg-emerald-950/30 text-emerald-200 border-l-2 border-emerald-600" : "";
+                    const prefix = row.right.type === 'added' ? "+" : " ";
+                    rightRowsHtml.push(`
+                        <div class="flex font-mono text-xs leading-relaxed hover:bg-slate-800/40${colorClass}">
+                            <span class="w-12 text-right text-slate-600 select-none pr-2 border-r border-slate-800">${row.right.newLine}</span>
+                            <span class="w-6 text-center select-none text-slate-500 font-bold">${prefix}</span>
+                            <span class="flex-1 px-2 whitespace-pre">${tokenized || ' '}</span>
+                        </div>
+                    `);
+                } else {
+                    rightRowsHtml.push(`
+                        <div class="flex font-mono text-xs leading-relaxed bg-slate-950/40 text-slate-700 select-none border-l-2 border-transparent">
+                            <span class="w-12 text-right text-slate-800 pr-2 border-r border-slate-800"> </span>
+                            <span class="w-6 text-center font-bold"> </span>
+                            <span class="flex-1 px-2">~</span>
+                        </div>
+                    `);
+                }
+            });
+
+            return `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border border-slate-800 rounded-lg overflow-hidden bg-slate-900">
+                    <div class="flex flex-col min-w-0 overflow-x-auto border-r border-slate-800 p-2">
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2 pb-2 mb-2 border-b border-slate-800">Original (Old)</div>
+                        <pre class="bg-transparent text-slate-100 font-mono text-xs leading-relaxed"><code>${leftRowsHtml.join('')}</code></pre>
+                    </div>
+                    <div class="flex flex-col min-w-0 overflow-x-auto p-2">
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2 pb-2 mb-2 border-b border-slate-800">Modified (New)</div>
+                        <pre class="bg-transparent text-slate-100 font-mono text-xs leading-relaxed"><code>${rightRowsHtml.join('')}</code></pre>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 🌟 Render Compare Settings Bar Widget
+        function renderCompareSettingsBar() {
+            const optionsHtml = compareCommitsList.map((c) => {
+                const dateStr = new Date(c.commit.committer.date).toLocaleDateString();
+                const shortSha = c.sha.slice(0, 7);
+                const shortMsg = c.commit.message.length > 50 ? c.commit.message.slice(0, 50) + "..." : c.commit.message;
+                const isSelected = c.sha === compareBaseSha ? 'selected' : '';
+                return `<option value="${c.sha}" ${isSelected}>[${shortSha}] ${dateStr} - ${shortMsg}</option>`;
+            }).join('');
+
+            return `
+                <div class="flex flex-wrap items-center justify-between gap-4 p-3 bg-slate-900 border border-slate-800 rounded-lg text-slate-200 text-xs mb-4">
+                    <div class="flex items-center gap-2">
+                        <span class="font-semibold text-slate-400">Compare against:</span>
+                        <select onchange="handleCompareShaChange(this.value)" class="bg-slate-800 border border-slate-700 text-slate-100 px-2 py-1 rounded focus:outline-none focus:border-indigo-500 font-mono max-w-xs md:max-w-md">
+                            ${optionsHtml}
+                        </select>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="font-semibold text-slate-400">View:</span>
+                        <div class="inline-flex rounded-md shadow-sm">
+                            <button onclick="handleCompareViewTypeChange('unified')" class="px-3 py-1 text-xs font-medium rounded-l-md border ${compareViewType === 'unified' ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'}">
+                                Unified
+                            </button>
+                            <button onclick="handleCompareViewTypeChange('split')" class="px-3 py-1 text-xs font-medium rounded-r-md border-t border-b border-r ${compareViewType === 'split' ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'}">
+                                Split
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function handleCompareShaChange(sha) {
+            compareBaseSha = sha;
+            loadAndRenderDiff();
+        }
+
+        function handleCompareViewTypeChange(type) {
+            compareViewType = type;
+            loadAndRenderDiff();
+        }
+
+        // 🌟 Fetch version content and display diff
+        async function loadAndRenderDiff() {
+            const renderBox = document.getElementById('markdownContainer');
+            
+            renderBox.innerHTML = `
+                ${renderCompareSettingsBar()}
+                <div class="flex flex-col items-center justify-center p-12 text-gray-500 space-y-3">
+                    <span class="animate-pulse font-mono">Streaming base version [${compareBaseSha.slice(0, 7)}]...</span>
+                </div>
+            `;
+
+            try {
+                const url = `https://raw.githubusercontent.com/${currentOwnerRepo}/${compareBaseSha}/${selectedSkillId}`;
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                compareBaseText = await response.text();
+
+                const diffResult = myersDiff(compareBaseText, activeRawFileText);
+                let diffHtml = "";
+                const ext = selectedSkillId ? selectedSkillId.split('.').pop().toLowerCase() : '';
+
+                if (compareViewType === 'unified') {
+                    diffHtml = renderUnifiedDiffHtml(diffResult, ext);
+                } else {
+                    diffHtml = renderSplitDiffHtml(diffResult, ext);
+                }
+
+                renderBox.innerHTML = `
+                    ${renderCompareSettingsBar()}
+                    <div class="mt-4 overflow-x-auto">${diffHtml}</div>
+                `;
+            } catch (e) {
+                console.error(e);
+                renderBox.innerHTML = `
+                    ${renderCompareSettingsBar()}
+                    <div class="p-6 text-center text-rose-600">Failed to retrieve base file version from GitHub Raw Content service.</div>
+                `;
+            }
+        }
+
+        // 🌟 Toggle Version Compare Mode
+        async function toggleCompareMode() {
+            if (!activeRawFileText) {
+                showToastNotification("No active file content to compare.");
+                return;
+            }
+
+            if (isCompareMode) {
+                isCompareMode = false;
+                document.getElementById('compareBtnText').innerText = "Compare";
+                document.getElementById('compareVersionBtn').classList.remove('bg-indigo-50', 'text-indigo-600', 'border-indigo-300');
+                
+                const renderBox = document.getElementById('markdownContainer');
+                const ext = selectedSkillId ? selectedSkillId.split('.').pop().toLowerCase() : '';
+                if (ext === 'md') {
+                    let cleanMarkdown = activeRawFileText;
+                    if (cleanMarkdown.startsWith('"') && cleanMarkdown.endsWith('"')) cleanMarkdown = cleanMarkdown.slice(1, -1);
+                    cleanMarkdown = cleanMarkdown
+                        .replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\u26a0\\ufe0f/g, '⚠️')
+                        .replace(/\\u2026/g, '…').replace(/\\u00d7/g, '×').replace(/\\u00b0/g, '°')
+                        .replace(/\\u2013/g, '–').replace(/\\u2014/g, '—').replace(/\\u2192/g, '→');
+                    cleanMarkdown = cleanMarkdown.replace(/\\u([0-9a-fA-F]{4})/g, (match, grp) => String.fromCharCode(parseInt(grp, 16)));
+                    cleanMarkdown = cleanMarkdown.replace(/^---[\s\S]*?---\s*/m, '');
+                    
+                    const dirtyHtml = marked.parse(cleanMarkdown);
+                    renderBox.innerHTML = DOMPurify.sanitize(dirtyHtml);
+                } else {
+                    renderBox.innerHTML = renderLineNumberedCode(activeRawFileText, ext);
+                    scrollToLineFragment();
+                }
+            } else {
+                isCompareMode = true;
+                document.getElementById('compareBtnText').innerText = "Exit Compare";
+                document.getElementById('compareVersionBtn').classList.add('bg-indigo-50', 'text-indigo-600', 'border-indigo-300');
+                
+                const renderBox = document.getElementById('markdownContainer');
+                renderBox.innerHTML = `
+                    <div class="flex flex-col items-center justify-center p-12 text-gray-500 space-y-3">
+                        <span class="animate-pulse font-mono">Fetching commit records for this file...</span>
+                    </div>
+                `;
+
+                try {
+                    const commits = await fetchGitHubData(`commits?path=${encodeURIComponent(selectedSkillId)}`);
+                    compareCommitsList = commits;
+                    
+                    if (!commits || commits.length === 0) {
+                        renderBox.innerHTML = `<div class="p-6 text-center text-rose-600">No commit history found for this file.</div>`;
+                        return;
+                    }
+
+                    const baseIndex = commits.length > 1 ? 1 : 0;
+                    compareBaseSha = commits[baseIndex].sha;
+                    
+                    await loadAndRenderDiff();
+                } catch (e) {
+                    console.error(e);
+                    renderBox.innerHTML = `<div class="p-6 text-center text-rose-600">Failed to fetch commit history. Ensure API token is valid.</div>`;
+                }
+            }
+        }
+
         // 🌟 Apply Line Highlights and URL Hash Sync Dynamically
         function applyLineSelectionState() {
             const rangeStr = formatLineSetToRangeString(activeSelectedLines);
@@ -1210,6 +1591,15 @@
         async function selectSkill(path, clearLineParams = true) {
             selectedSkillId = path;
             filterSkills();
+
+            // Reset version comparison state
+            if (isCompareMode) {
+                isCompareMode = false;
+                const compareBtnText = document.getElementById('compareBtnText');
+                if (compareBtnText) compareBtnText.innerText = "Compare";
+                const compareVersionBtn = document.getElementById('compareVersionBtn');
+                if (compareVersionBtn) compareVersionBtn.classList.remove('bg-indigo-50', 'text-indigo-600', 'border-indigo-300');
+            }
 
             // FIX: Explicitly clear local line highlight state and URL hash when switching files via UI
             if (clearLineParams) {
