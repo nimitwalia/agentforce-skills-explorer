@@ -83,6 +83,7 @@
 
         .line-highlight { background-color: rgba(254, 240, 138, 0.25) !important; border-left: 2px solid #facc15; }
         .search-match-highlight { background-color: #fef08a; color: #000; border-radius: 2px; }
+        .active-diff-highlight { outline: 2px solid #eab308 !important; outline-offset: -2px; }
     </style>
 </head>
 <body class="bg-[#f3f4f6] text-[#181818] font-sans min-h-screen flex flex-col antialiased relative">
@@ -195,7 +196,7 @@
     </div>
 
     <!-- Main Grid Workspace -->
-    <main class="max-w-[1600px] w-full mx-auto p-4 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch overflow-hidden">
+    <main class="max-w-[1600px] w-full mx-auto p-4 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
         
         <!-- Sidebar Navigation -->
         <section class="lg:col-span-3 flex flex-col space-y-3 min-h-0">
@@ -281,9 +282,9 @@
                     </div>
                 </div>
 
-                <div class="p-5 overflow-y-auto flex-1 grid grid-cols-1 xl:grid-cols-12 gap-5 bg-gray-50/50 min-h-0">
-                    <div class="xl:col-span-8 bg-white p-6 rounded-lg border border-gray-200 shadow-sm flex flex-col max-w-full overflow-hidden min-h-0">
-                        <div class="overflow-y-auto flex-1 prose max-w-none text-xs min-h-0" id="markdownContainer"></div>
+                <div class="p-5 flex-1 grid grid-cols-1 xl:grid-cols-12 gap-5 bg-gray-50/50 min-h-0">
+                    <div id="previewCanvasContainer" class="xl:col-span-8 bg-white p-6 rounded-lg border border-gray-200 shadow-sm flex flex-col max-w-full overflow-hidden min-h-0">
+                        <div class="flex-1 prose max-w-none text-xs min-h-0" id="markdownContainer"></div>
                     </div>
 
                     <div class="xl:col-span-4 space-y-4 flex flex-col overflow-y-auto min-h-0" id="widgetWorkspaceStack"></div>
@@ -347,6 +348,8 @@
         let compareBaseSha = "";
         let compareViewType = "unified"; // "unified" or "split"
         let compareCommitsList = [];
+        let currentChangeBlockIndex = -1;
+        let changeBlocks = [];
         
         let activeSignatures = {
             AGENTFORCE_SKILLS: false,
@@ -1218,107 +1221,139 @@
                 let prefix = " ";
                 let oldLineNumStr = line.oldLine !== null ? line.oldLine : "";
                 let newLineNumStr = line.newLine !== null ? line.newLine : "";
+                let changeClass = "";
 
                 if (line.type === 'removed') {
-                    colorClass = " bg-rose-950/30 text-rose-200 border-l-2 border-rose-600";
+                    colorClass = " bg-yellow-500/15 text-yellow-100 border-l-2 border-yellow-500";
                     prefix = "-";
+                    changeClass = " diff-changed-line";
                 } else if (line.type === 'added') {
                     colorClass = " bg-emerald-950/30 text-emerald-200 border-l-2 border-emerald-600";
                     prefix = "+";
+                    changeClass = " diff-changed-line";
                 }
 
                 return `
-                    <div class="flex font-mono text-xs leading-relaxed hover:bg-slate-800/40${colorClass}">
+                    <div class="flex font-mono text-xs leading-relaxed hover:bg-slate-800/40 text-slate-100${colorClass}${changeClass}">
                         <span class="w-12 text-right text-slate-600 select-none pr-2 border-r border-slate-800">${oldLineNumStr}</span>
                         <span class="w-12 text-right text-slate-600 select-none pr-2 border-r border-slate-800">${newLineNumStr}</span>
                         <span class="w-6 text-center select-none text-slate-500 font-bold">${prefix}</span>
-                        <span class="flex-1 px-2 whitespace-pre">${tokenized || ' '}</span>
+                        <span class="flex-1 px-2 whitespace-pre-wrap break-all">${tokenized || ' '}</span>
                     </div>
                 `;
             }).join('');
 
-            return `<pre class="bg-slate-900 text-slate-100 p-4 rounded font-mono text-xs overflow-x-auto leading-relaxed border border-slate-800"><code>${linesHtml}</code></pre>`;
+            return `<pre class="bg-slate-900 text-slate-100 p-4 rounded font-mono text-xs overflow-x-auto leading-relaxed border border-slate-800 min-h-[600px] flex-1"><code>${linesHtml}</code></pre>`;
         }
 
         // 🌟 Split (Side-by-Side) Diff Renderer Template
         function renderSplitDiffHtml(diffResult, ext) {
             const rows = [];
             let i = 0;
-            while (i < diffResult.length) {
+            const len = diffResult.length;
+
+            while (i < len) {
                 const item = diffResult[i];
                 if (item.type === 'normal') {
                     rows.push({ left: item, right: item });
                     i++;
-                } else if (item.type === 'removed') {
-                    if (i + 1 < diffResult.length && diffResult[i + 1].type === 'added') {
-                        rows.push({ left: item, right: diffResult[i + 1] });
-                        i += 2;
-                    } else {
-                        rows.push({ left: item, right: null });
+                } else {
+                    const removedBlock = [];
+                    const addedBlock = [];
+
+                    while (i < len && (diffResult[i].type === 'removed' || diffResult[i].type === 'added')) {
+                        if (diffResult[i].type === 'removed') {
+                            removedBlock.push(diffResult[i]);
+                        } else {
+                            addedBlock.push(diffResult[i]);
+                        }
                         i++;
                     }
-                } else if (item.type === 'added') {
-                    rows.push({ left: null, right: item });
-                    i++;
+
+                    const maxLen = Math.max(removedBlock.length, addedBlock.length);
+                    for (let k = 0; k < maxLen; k++) {
+                        rows.push({
+                            left: k < removedBlock.length ? removedBlock[k] : null,
+                            right: k < addedBlock.length ? addedBlock[k] : null
+                        });
+                    }
                 }
             }
 
-            const leftRowsHtml = [];
-            const rightRowsHtml = [];
+            const rowsHtml = rows.map((row) => {
+                let leftHtml = "";
+                let rightHtml = "";
+                let isChanged = false;
+                let changeClass = "";
 
-            rows.forEach((row) => {
                 if (row.left) {
                     const tokenized = tokenizeSyntax(row.left.value, ext);
-                    const colorClass = row.left.type === 'removed' ? " bg-rose-950/30 text-rose-200 border-l-2 border-rose-600" : "";
+                    const colorClass = row.left.type === 'removed' ? " bg-yellow-500/15 text-yellow-100 border-l-2 border-yellow-500" : "";
                     const prefix = row.left.type === 'removed' ? "-" : " ";
-                    leftRowsHtml.push(`
-                        <div class="flex font-mono text-xs leading-relaxed hover:bg-slate-800/40${colorClass}">
+                    if (row.left.type === 'removed') {
+                        isChanged = true;
+                        changeClass = " diff-changed-line";
+                    }
+                    leftHtml = `
+                        <div class="flex font-mono text-xs leading-relaxed hover:bg-slate-800/40 text-slate-100${colorClass}">
                             <span class="w-12 text-right text-slate-600 select-none pr-2 border-r border-slate-800">${row.left.oldLine}</span>
                             <span class="w-6 text-center select-none text-slate-500 font-bold">${prefix}</span>
-                            <span class="flex-1 px-2 whitespace-pre">${tokenized || ' '}</span>
+                            <span class="flex-1 px-2 whitespace-pre-wrap break-all">${tokenized || ' '}</span>
                         </div>
-                    `);
+                    `;
                 } else {
-                    leftRowsHtml.push(`
+                    leftHtml = `
                         <div class="flex font-mono text-xs leading-relaxed bg-slate-950/40 text-slate-700 select-none border-l-2 border-transparent">
                             <span class="w-12 text-right text-slate-800 pr-2 border-r border-slate-800"> </span>
                             <span class="w-6 text-center font-bold"> </span>
                             <span class="flex-1 px-2">~</span>
                         </div>
-                    `);
+                    `;
                 }
 
                 if (row.right) {
                     const tokenized = tokenizeSyntax(row.right.value, ext);
                     const colorClass = row.right.type === 'added' ? " bg-emerald-950/30 text-emerald-200 border-l-2 border-emerald-600" : "";
                     const prefix = row.right.type === 'added' ? "+" : " ";
-                    rightRowsHtml.push(`
-                        <div class="flex font-mono text-xs leading-relaxed hover:bg-slate-800/40${colorClass}">
+                    if (row.right.type === 'added') {
+                        isChanged = true;
+                        changeClass = " diff-changed-line";
+                    }
+                    rightHtml = `
+                        <div class="flex font-mono text-xs leading-relaxed hover:bg-slate-800/40 text-slate-100${colorClass}">
                             <span class="w-12 text-right text-slate-600 select-none pr-2 border-r border-slate-800">${row.right.newLine}</span>
                             <span class="w-6 text-center select-none text-slate-500 font-bold">${prefix}</span>
-                            <span class="flex-1 px-2 whitespace-pre">${tokenized || ' '}</span>
+                            <span class="flex-1 px-2 whitespace-pre-wrap break-all">${tokenized || ' '}</span>
                         </div>
-                    `);
+                    `;
                 } else {
-                    rightRowsHtml.push(`
+                    rightHtml = `
                         <div class="flex font-mono text-xs leading-relaxed bg-slate-950/40 text-slate-700 select-none border-l-2 border-transparent">
                             <span class="w-12 text-right text-slate-800 pr-2 border-r border-slate-800"> </span>
                             <span class="w-6 text-center font-bold"> </span>
                             <span class="flex-1 px-2">~</span>
                         </div>
-                    `);
+                    `;
                 }
-            });
+
+                return `
+                    <div class="grid grid-cols-2 gap-4${changeClass}">
+                        <div>${leftHtml}</div>
+                        <div>${rightHtml}</div>
+                    </div>
+                `;
+            }).join('');
 
             return `
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border border-slate-800 rounded-lg overflow-hidden bg-slate-900">
-                    <div class="flex flex-col min-w-0 overflow-x-auto border-r border-slate-800 p-2">
-                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2 pb-2 mb-2 border-b border-slate-800">Original (Old)</div>
-                        <pre class="bg-transparent text-slate-100 font-mono text-xs leading-relaxed"><code>${leftRowsHtml.join('')}</code></pre>
+                <div class="flex flex-col border border-slate-800 rounded-lg overflow-hidden bg-slate-900 p-2 min-h-[600px] flex-1">
+                    <div class="grid grid-cols-2 gap-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2 pb-2 mb-2 border-b border-slate-800">
+                        <div>Original (Old)</div>
+                        <div>Modified (New)</div>
                     </div>
-                    <div class="flex flex-col min-w-0 overflow-x-auto p-2">
-                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2 pb-2 mb-2 border-b border-slate-800">Modified (New)</div>
-                        <pre class="bg-transparent text-slate-100 font-mono text-xs leading-relaxed"><code>${rightRowsHtml.join('')}</code></pre>
+                    <div class="flex-1 overflow-x-auto">
+                        <div class="min-w-[600px] flex flex-col">
+                            ${rowsHtml}
+                        </div>
                     </div>
                 </div>
             `;
@@ -1335,13 +1370,25 @@
             }).join('');
 
             return `
-                <div class="flex flex-wrap items-center justify-between gap-4 p-3 bg-slate-900 border border-slate-800 rounded-lg text-slate-200 text-xs mb-4">
+                <div class="sticky top-[60px] z-10 flex flex-wrap items-center justify-between gap-4 p-3 bg-slate-900 border border-slate-800 rounded-lg text-slate-200 text-xs mb-4 shadow-lg">
                     <div class="flex items-center gap-2">
-                        <span class="font-semibold text-slate-400">Compare against:</span>
+                        <span class="font-semibold text-slate-400">Compare:</span>
                         <select onchange="handleCompareShaChange(this.value)" class="bg-slate-800 border border-slate-700 text-slate-100 px-2 py-1 rounded focus:outline-none focus:border-indigo-500 font-mono max-w-xs md:max-w-md">
                             ${optionsHtml}
                         </select>
                     </div>
+
+                    <!-- Navigation Controls -->
+                    <div class="flex items-center gap-2 bg-slate-800 border border-slate-700 px-2 py-1 rounded">
+                        <button id="diffPrevBtn" onclick="navigateDiff('prev')" class="hover:bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded transition-all disabled:opacity-30 disabled:pointer-events-none text-[11px]" title="Previous Change">
+                            ⏮️ Prev
+                        </button>
+                        <span id="diffCountLabel" class="text-[10px] font-mono text-slate-400 select-none min-w-[80px] text-center">0 of 0 changes</span>
+                        <button id="diffNextBtn" onclick="navigateDiff('next')" class="hover:bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded transition-all disabled:opacity-30 disabled:pointer-events-none text-[11px]" title="Next Change">
+                            Next ⏭️
+                        </button>
+                    </div>
+
                     <div class="flex items-center gap-3">
                         <span class="font-semibold text-slate-400">View:</span>
                         <div class="inline-flex rounded-md shadow-sm">
@@ -1365,6 +1412,139 @@
         function handleCompareViewTypeChange(type) {
             compareViewType = type;
             loadAndRenderDiff();
+        }
+
+        // 🌟 Initialize Diff Navigation Blocks
+        function initDiffNavigation() {
+            changeBlocks = [];
+            currentChangeBlockIndex = -1;
+
+            const renderBox = document.getElementById('markdownContainer');
+            const changedEls = Array.from(renderBox.querySelectorAll('.diff-changed-line'));
+
+            let currentBlock = [];
+            changedEls.forEach((el, idx) => {
+                if (idx === 0) {
+                    currentBlock.push(el);
+                } else {
+                    const prevEl = changedEls[idx - 1];
+                    if (prevEl.nextElementSibling === el) {
+                        currentBlock.push(el);
+                    } else {
+                        changeBlocks.push(currentBlock);
+                        currentBlock = [el];
+                    }
+                }
+            });
+            if (currentBlock.length > 0) {
+                changeBlocks.push(currentBlock);
+            }
+
+            changeBlocks.forEach((block, idx) => {
+                block[0].setAttribute('id', `diff-block-${idx}`);
+            });
+
+            updateDiffNavUi();
+        }
+
+        function updateDiffNavUi() {
+            const prevBtn = document.getElementById('diffPrevBtn');
+            const nextBtn = document.getElementById('diffNextBtn');
+            const countLabel = document.getElementById('diffCountLabel');
+
+            if (!countLabel) return;
+
+            if (changeBlocks.length === 0) {
+                countLabel.innerText = "No changes";
+                if (prevBtn) prevBtn.disabled = true;
+                if (nextBtn) nextBtn.disabled = true;
+            } else {
+                const currentDisplay = currentChangeBlockIndex === -1 ? "-" : (currentChangeBlockIndex + 1);
+                countLabel.innerText = `${currentDisplay} of ${changeBlocks.length} changes`;
+                if (prevBtn) {
+                    prevBtn.disabled = (currentChangeBlockIndex <= 0);
+                }
+                if (nextBtn) {
+                    nextBtn.disabled = (currentChangeBlockIndex >= changeBlocks.length - 1);
+                }
+            }
+        }
+
+        function getScrollParent(node) {
+            if (!node || node === document.body || node === document.documentElement) {
+                return document.documentElement || document.body;
+            }
+            if (node.scrollHeight > node.clientHeight) {
+                const overflowY = window.getComputedStyle(node).overflowY;
+                if (overflowY === 'auto' || overflowY === 'scroll') {
+                    return node;
+                }
+            }
+            return getScrollParent(node.parentNode);
+        }
+
+        function navigateDiff(direction) {
+            if (changeBlocks.length === 0) return;
+
+            if (direction === 'next') {
+                if (currentChangeBlockIndex < changeBlocks.length - 1) {
+                    currentChangeBlockIndex++;
+                } else {
+                    return;
+                }
+            } else {
+                if (currentChangeBlockIndex > 0) {
+                    currentChangeBlockIndex--;
+                } else {
+                    return;
+                }
+            }
+
+            const renderBox = document.getElementById('markdownContainer');
+            const activeEls = renderBox.querySelectorAll('.active-diff-highlight');
+            activeEls.forEach(el => el.classList.remove('active-diff-highlight'));
+
+            const activeBlock = changeBlocks[currentChangeBlockIndex];
+            if (activeBlock && activeBlock[0]) {
+                const targetEl = activeBlock[0];
+                const scrollContainer = getScrollParent(targetEl);
+                if (scrollContainer && targetEl) {
+                    const containerRect = scrollContainer.getBoundingClientRect();
+                    const targetRect = targetEl.getBoundingClientRect();
+                    
+                    // Account for both the main global header and the floating compare settings bar
+                    let headerHeight = 0;
+                    const globalHeader = document.querySelector('header.sticky');
+                    if (globalHeader) {
+                        headerHeight += globalHeader.getBoundingClientRect().height;
+                    }
+                    const compareHeader = document.querySelector('#markdownContainer .sticky');
+                    if (compareHeader) {
+                        headerHeight += compareHeader.getBoundingClientRect().height;
+                    }
+                    
+                    // Calculate absolute scroll position
+                    let targetScrollTop = 0;
+                    if (scrollContainer === document.documentElement || scrollContainer === document.body) {
+                        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                        targetScrollTop = scrollTop + targetRect.top - headerHeight - 12;
+                        
+                        window.scrollTo({
+                            top: targetScrollTop,
+                            behavior: 'smooth'
+                        });
+                    } else {
+                        targetScrollTop = scrollContainer.scrollTop + (targetRect.top - containerRect.top) - headerHeight - 12;
+                        scrollContainer.scrollTo({
+                            top: targetScrollTop,
+                            behavior: 'smooth'
+                        });
+                    }
+                }
+                activeBlock.forEach(el => el.classList.add('active-diff-highlight'));
+            }
+
+            updateDiffNavUi();
         }
 
         // 🌟 Fetch version content and display diff
@@ -1398,12 +1578,34 @@
                     ${renderCompareSettingsBar()}
                     <div class="mt-4 overflow-x-auto">${diffHtml}</div>
                 `;
+
+                initDiffNavigation();
             } catch (e) {
                 console.error(e);
                 renderBox.innerHTML = `
                     ${renderCompareSettingsBar()}
                     <div class="p-6 text-center text-rose-600">Failed to retrieve base file version from GitHub Raw Content service.</div>
                 `;
+            }
+        }
+
+        // 🌟 Collapses right actions sidebar and sets canvas full-width
+        function updateCompareLayoutMode(compareActive) {
+            const sidebar = document.getElementById('widgetWorkspaceStack');
+            const canvas = document.getElementById('previewCanvasContainer');
+            const detailState = document.getElementById('detailState');
+            if (canvas && sidebar && detailState) {
+                if (compareActive) {
+                    sidebar.classList.add('hidden');
+                    canvas.classList.remove('xl:col-span-8', 'overflow-hidden');
+                    canvas.classList.add('xl:col-span-12');
+                    detailState.classList.remove('overflow-hidden');
+                } else {
+                    sidebar.classList.remove('hidden');
+                    canvas.classList.remove('xl:col-span-12');
+                    canvas.classList.add('xl:col-span-8', 'overflow-hidden');
+                    detailState.classList.add('overflow-hidden');
+                }
             }
         }
 
@@ -1418,6 +1620,7 @@
                 isCompareMode = false;
                 document.getElementById('compareBtnText').innerText = "Compare";
                 document.getElementById('compareVersionBtn').classList.remove('bg-indigo-50', 'text-indigo-600', 'border-indigo-300');
+                updateCompareLayoutMode(false);
                 
                 const renderBox = document.getElementById('markdownContainer');
                 const ext = selectedSkillId ? selectedSkillId.split('.').pop().toLowerCase() : '';
@@ -1441,6 +1644,7 @@
                 isCompareMode = true;
                 document.getElementById('compareBtnText').innerText = "Exit Compare";
                 document.getElementById('compareVersionBtn').classList.add('bg-indigo-50', 'text-indigo-600', 'border-indigo-300');
+                updateCompareLayoutMode(true);
                 
                 const renderBox = document.getElementById('markdownContainer');
                 renderBox.innerHTML = `
@@ -1600,6 +1804,7 @@
                 const compareVersionBtn = document.getElementById('compareVersionBtn');
                 if (compareVersionBtn) compareVersionBtn.classList.remove('bg-indigo-50', 'text-indigo-600', 'border-indigo-300');
             }
+            updateCompareLayoutMode(false);
 
             // FIX: Explicitly clear local line highlight state and URL hash when switching files via UI
             if (clearLineParams) {
