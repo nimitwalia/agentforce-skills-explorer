@@ -31,16 +31,16 @@
         .tooltip-text { visibility: hidden; width: 220px; background-color: #0f172a; color: #fff; text-align: center; border-radius: 6px; padding: 6px 10px; position: absolute; z-index: 100; bottom: 125%; left: 50%; margin-left: -110px; opacity: 0; transition: opacity 0.2s; font-family: sans-serif; font-size: 11px; line-height: 1.4; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
         .tooltip-container:hover .tooltip-text { visibility: visible; opacity: 1; }
 
-        /* Line Numbers and Syntax Highlight Styling */
+        /* Line Numbers, Tooltip and Syntax Highlight Styling */
         .line-numbered-code { counter-reset: line-numbering; }
-        .line-numbered-code .code-line { display: block; position: relative; padding-left: 3.25rem; }
+        .line-numbered-code .code-line { display: block; position: relative; padding-left: 3.5rem; }
         .line-numbered-code .code-line::before {
             counter-increment: line-numbering;
             content: counter(line-numbering);
             position: absolute;
             left: 0;
             top: 0;
-            width: 2.5rem;
+            width: 2.75rem;
             text-align: right;
             color: #64748b;
             user-select: none;
@@ -48,11 +48,39 @@
             cursor: pointer;
             transition: color 0.15s, background-color 0.15s;
             border-radius: 2px;
+            padding-right: 0.25rem;
         }
         .line-numbered-code .code-line::before:hover {
-            color: #f8fafc;
+            color: #38bdf8;
             background-color: rgba(255, 255, 255, 0.1);
         }
+
+        /* Gutter Hover Tooltip Widget */
+        .line-numbered-code .code-line .gutter-tooltip {
+            visibility: hidden;
+            opacity: 0;
+            position: absolute;
+            left: 3.8rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: #0f172a;
+            color: #f8fafc;
+            padding: 2px 8px;
+            border-radius: 4px;
+            border: 1px solid #334155;
+            font-size: 10px;
+            font-family: sans-serif;
+            white-space: nowrap;
+            z-index: 50;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            transition: opacity 0.15s ease, visibility 0.15s ease;
+            pointer-events: none;
+        }
+        .line-numbered-code .code-line:hover .gutter-tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+
         .line-highlight { background-color: rgba(254, 240, 138, 0.25) !important; border-left: 2px solid #facc15; }
         .search-match-highlight { background-color: #fef08a; color: #000; border-radius: 2px; }
     </style>
@@ -807,7 +835,7 @@
 
                 const deepLinkObj = checkUrlDeepLinks();
                 if (deepLinkObj && deepLinkObj.path) {
-                    selectSkill(deepLinkObj.path);
+                    selectSkill(deepLinkObj.path, false);
                 }
             } catch (err) {
                 console.error(err);
@@ -1042,7 +1070,7 @@
                 const isHighlighted = activeSelectedLines.has(lineNum);
                 const highlightClass = isHighlighted ? ' line-highlight' : '';
                 
-                return `<span id="L${lineNum}" class="code-line${highlightClass}">${tokenizedLine || ' '}</span>`;
+                return `<span id="L${lineNum}" class="code-line${highlightClass}">${tokenizedLine || ' '}<span class="gutter-tooltip" id="tt-${lineNum}">Click to copy line link</span></span>`;
             }).join('');
 
             return `<pre class="bg-slate-900 text-slate-100 p-4 rounded font-mono text-xs overflow-x-auto leading-relaxed line-numbered-code"><code>${linesHtml}</code></pre>`;
@@ -1084,7 +1112,7 @@
             });
         }
 
-        // 🌟 Interactive Click Handler for Line Number Selection
+        // 🌟 Interactive Click Handler for Line Number Selection & Tooltip Notice
         function initInteractiveLineClickListener() {
             const container = document.getElementById('markdownContainer');
             container.addEventListener('click', function(e) {
@@ -1094,8 +1122,8 @@
                 const rect = codeLine.getBoundingClientRect();
                 const clickX = e.clientX - rect.left;
                 
-                // Trigger line selection strictly when clicking within the line-number gutter area (left 52px)
-                if (clickX > 52) return;
+                // Trigger line selection strictly when clicking within the line-number gutter area (left 56px)
+                if (clickX > 56) return;
 
                 const lineNum = parseInt(codeLine.id.replace('L', ''), 10);
                 if (isNaN(lineNum)) return;
@@ -1125,6 +1153,13 @@
                 }
 
                 applyLineSelectionState();
+
+                // Trigger active tooltip copy feedback
+                const tooltip = document.getElementById(`tt-${lineNum}`);
+                if (tooltip) {
+                    tooltip.innerText = "Copied link!";
+                    setTimeout(() => { tooltip.innerText = "Click to copy line link"; }, 2000);
+                }
             });
         }
 
@@ -1172,9 +1207,21 @@
             searchActivePreviewText(query);
         }
 
-        async function selectSkill(path) {
+        async function selectSkill(path, clearLineParams = true) {
             selectedSkillId = path;
             filterSkills();
+
+            // FIX: Explicitly clear local line highlight state and URL hash when switching files via UI
+            if (clearLineParams) {
+                activeSelectedLines.clear();
+                lastClickedLineNum = null;
+                const cleanURL = window.location.pathname + `?repo=${encodeURIComponent(currentOwnerRepo)}&path=${encodeURIComponent(path)}`;
+                if (window.history.replaceState) {
+                    window.history.replaceState(null, null, cleanURL);
+                } else {
+                    window.location.hash = '';
+                }
+            }
 
             const node = repositoryTreeData.find(n => n.path === path);
             if (!node || node.type === 'dir') return;
