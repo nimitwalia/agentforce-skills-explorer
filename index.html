@@ -918,7 +918,6 @@
             renderNestedTree(filtered);
         }
 
-        // 🌟 FIX 2.1: Zero-CDN Client-Side Syntax Tokenizing Engine
         function tokenizeSyntax(codeStr, ext) {
             let safe = codeStr.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
             
@@ -939,37 +938,43 @@
                 .replace(keywords, '<span class="text-purple-400 font-bold">$1</span>');
         }
 
+        // 🌟 PERMANENT FIX 2.3: Synchronous Line-Range Fragment Highlighting
         function renderLineNumberedCode(rawText, ext) {
             const lines = rawText.split('\n');
+            
+            const hash = window.location.hash;
+            let startLine = -1, endLine = -1;
+            if (hash && hash.startsWith('#L')) {
+                const parts = hash.replace('#L', '').split('-');
+                startLine = parseInt(parts[0], 10);
+                endLine = parts[1] ? parseInt(parts[1], 10) : startLine;
+            }
+
             const linesHtml = lines.map((lineStr, idx) => {
                 const lineNum = idx + 1;
                 const tokenizedLine = tokenizeSyntax(lineStr, ext);
-                return `<span id="L${lineNum}" class="code-line">${tokenizedLine || ' '}</span>`;
+                const isHighlighted = (lineNum >= startLine && lineNum <= endLine);
+                const highlightClass = isHighlighted ? ' line-highlight' : '';
+                
+                return `<span id="L${lineNum}" class="code-line${highlightClass}">${tokenizedLine || ' '}</span>`;
             }).join('');
 
             return `<pre class="bg-slate-900 text-slate-100 p-4 rounded font-mono text-xs overflow-x-auto leading-relaxed line-numbered-code"><code>${linesHtml}</code></pre>`;
         }
 
-        // 🌟 FIX 2.3: Prevent Re-render Race Condition on Deep-Link Highlights
-        function processLineFragmentSelection() {
+        function scrollToLineFragment() {
             const hash = window.location.hash;
             if (!hash || !hash.startsWith('#L')) return;
 
-            requestAnimationFrame(() => {
-                setTimeout(() => {
-                    const parts = hash.replace('#L', '').split('-');
-                    const startLine = parseInt(parts[0], 10);
-                    const endLine = parts[1] ? parseInt(parts[1], 10) : startLine;
-
-                    for (let i = startLine; i <= endLine; i++) {
-                        const lineEl = document.getElementById(`L${i}`);
-                        if (lineEl) lineEl.classList.add('line-highlight');
-                    }
-
-                    const firstEl = document.getElementById(`L${startLine}`);
-                    if (firstEl) firstEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }, 100);
-            });
+            const parts = hash.replace('#L', '').split('-');
+            const startLine = parseInt(parts[0], 10);
+            
+            setTimeout(() => {
+                const firstEl = document.getElementById(`L${startLine}`);
+                if (firstEl) {
+                    firstEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 50);
         }
 
         function searchActivePreviewText(query) {
@@ -990,7 +995,6 @@
             });
         }
 
-        // 🌟 FIX 4.2: Wire In-Session Content Search Match Navigation
         function executeSessionContentSearch() {
             const query = document.getElementById('sessionSearchInput').value.trim().toLowerCase();
             if (!query) return;
@@ -1052,7 +1056,7 @@
                     renderBox.innerHTML = DOMPurify.sanitize(dirtyHtml);
                 } else {
                     renderBox.innerHTML = renderLineNumberedCode(rawText, ext);
-                    processLineFragmentSelection();
+                    scrollToLineFragment();
                 }
 
                 if (window.goatcounter && window.goatcounter.count) {
@@ -1082,7 +1086,6 @@
             }, 2500);
         }
 
-        // 🌟 FIX 4.1: Expand Supply-Chain Security Linter
         function validateAndScanManifest(node, rawText) {
             const warnings = [];
             const filename = node.name.toLowerCase();
@@ -1191,7 +1194,6 @@
                 `;
             }
 
-            // 🌟 FIX 3.1: Surface ALL Defined Node.js Scripts
             if (filename === 'package.json') {
                 try {
                     const parsed = JSON.parse(rawText);
@@ -1216,7 +1218,6 @@
                 } catch(e) {}
             }
 
-            // 🌟 FIX 3.2: Include Virtual Environment Creation in Python Output
             if (filename === 'requirements.txt') {
                 const cmdStr = `python -m venv venv && source venv/bin/activate && pip install -r requirements.txt`;
                 compositeHtml += `
